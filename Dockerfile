@@ -23,7 +23,8 @@ RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt
 
 COPY app ./app
+COPY start.sh ./start.sh
 
 EXPOSE 8080
 
-CMD ["sh", "-c", "gunicorn -w 1 -b 0.0.0.0:${PORT} app.web_app:app"]
+CMD ["sh", "./start.sh"]
