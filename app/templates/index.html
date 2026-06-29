@@ -452,6 +452,65 @@
       line-height: 1.5;
     }
 
+    .loading-overlay {
+      position: fixed;
+      inset: 0;
+      display: none;
+      place-items: center;
+      padding: 20px;
+      background: rgba(20, 16, 12, 0.56);
+      z-index: 50;
+    }
+
+    .loading-overlay.open {
+      display: grid;
+    }
+
+    .loading-card {
+      min-width: min(360px, 100%);
+      padding: 24px 22px;
+      border-radius: 28px;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      background: rgba(255, 250, 244, 0.96);
+      box-shadow: var(--shadow);
+      text-align: center;
+    }
+
+    .loading-spinner {
+      width: 48px;
+      height: 48px;
+      margin: 0 auto 14px;
+      border-radius: 50%;
+      border: 4px solid rgba(203, 109, 45, 0.18);
+      border-top-color: var(--accent);
+      animation: spin 0.9s linear infinite;
+    }
+
+    .loading-card h3 {
+      margin: 0 0 8px;
+      font-size: 22px;
+    }
+
+    .loading-card p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .is-loading .primary[type="submit"] {
+      opacity: 0.72;
+      pointer-events: none;
+    }
+
+    @keyframes spin {
+      from {
+        transform: rotate(0deg);
+      }
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
     @media (max-width: 1080px) {
       .workspace,
       .content-grid,
@@ -481,7 +540,7 @@
         <h2 class="section-title">Input</h2>
         <p>Chọn 1 ảnh hoặc 1 thư mục.</p>
 
-        <form method="post" enctype="multipart/form-data">
+        <form method="post" enctype="multipart/form-data" id="analyze-form">
           <div class="field">
             <label for="single_image">1 ảnh cụ thể</label>
             <input id="single_image" type="file" name="single_image" accept="image/*">
@@ -509,7 +568,7 @@
           </div>
 
           <div class="button-row">
-            <button class="primary" type="submit">Chấm</button>
+            <button class="primary" type="submit" id="submit-analyze">Chấm</button>
             <button class="secondary" type="reset">Xóa chọn</button>
           </div>
         </form>
@@ -688,6 +747,14 @@
     </div>
   </div>
 
+  <div class="loading-overlay" id="loading-overlay" aria-hidden="true">
+    <div class="loading-card">
+      <div class="loading-spinner" aria-hidden="true"></div>
+      <h3>Đang xử lý</h3>
+      <p>Vui lòng chờ trong giây lát.</p>
+    </div>
+  </div>
+
   {% if analyzed_items %}
     <script>
       const historyButtons = document.querySelectorAll(".history-item");
@@ -731,6 +798,9 @@
     const groupGuideModal = document.getElementById("group-guide-modal");
     const openGroupGuideButton = document.getElementById("open-group-guide");
     const closeGroupGuideButton = document.getElementById("close-group-guide");
+    const analyzeForm = document.getElementById("analyze-form");
+    const loadingOverlay = document.getElementById("loading-overlay");
+    const submitAnalyzeButton = document.getElementById("submit-analyze");
 
     function openGroupGuide() {
       groupGuideModal?.classList.add("open");
@@ -753,6 +823,28 @@
       if (event.key === "Escape") {
         closeGroupGuide();
       }
+    });
+
+    function showLoading() {
+      loadingOverlay?.classList.add("open");
+      loadingOverlay?.setAttribute("aria-hidden", "false");
+      analyzeForm?.classList.add("is-loading");
+      if (submitAnalyzeButton) {
+        submitAnalyzeButton.textContent = "Đang chấm...";
+      }
+    }
+
+    window.addEventListener("pageshow", () => {
+      loadingOverlay?.classList.remove("open");
+      loadingOverlay?.setAttribute("aria-hidden", "true");
+      analyzeForm?.classList.remove("is-loading");
+      if (submitAnalyzeButton) {
+        submitAnalyzeButton.textContent = "Chấm";
+      }
+    });
+
+    analyzeForm?.addEventListener("submit", () => {
+      showLoading();
     });
   </script>
 
