@@ -1,10 +1,15 @@
 import cv2
 import mediapipe as mp
 import os
+import io
 from pathlib import Path
 import numpy as np
+from PIL import Image, ImageOps
+from pillow_heif import register_heif_opener
 
-SUPPORTED_IMAGE_EXTENSIONS = {'.png', '.jpg', '.jpeg', '.webp'}
+register_heif_opener()
+
+SUPPORTED_IMAGE_EXTENSIONS = {'.png', '.jpg', '.jpeg', '.webp', '.heic', '.heif'}
 
 # Luu y: left/right o day la theo phia cua nguoi trong anh, khong phai phia nguoi xem.
 # Polygon duoc dat theo thu tu di quanh vung ma de mask ra "mieng ma" ro hon.
@@ -51,6 +56,34 @@ SKIN_TONE_GROUPS = [
 
 # Khởi tạo module Face Mesh của MediaPipe
 mp_face_mesh = mp.solutions.face_mesh
+
+
+def pil_to_bgr(pil_image):
+    rgb_image = ImageOps.exif_transpose(pil_image).convert("RGB")
+    rgb_array = np.array(rgb_image)
+    return cv2.cvtColor(rgb_array, cv2.COLOR_RGB2BGR)
+
+
+def decode_image_bytes(image_bytes):
+    image_array = np.frombuffer(image_bytes, dtype=np.uint8)
+    if image_array.size > 0:
+        image = cv2.imdecode(image_array, cv2.IMREAD_COLOR)
+        if image is not None:
+            return image
+
+    try:
+        with Image.open(io.BytesIO(image_bytes)) as pil_image:
+            return pil_to_bgr(pil_image)
+    except Exception:
+        return None
+
+
+def load_image_path(image_path):
+    try:
+        image_bytes = Path(image_path).read_bytes()
+    except OSError:
+        return None
+    return decode_image_bytes(image_bytes)
 
 
 def landmark_to_pixel(face_landmarks, index, width, height):
@@ -271,7 +304,7 @@ def analyze_image_array(image, mode='largest', draw_labels=True):
 
 
 def analyze_image_path(image_path, mode='largest', draw_labels=True):
-    image = cv2.imread(str(image_path))
+    image = load_image_path(image_path)
     return analyze_image_array(image, mode=mode, draw_labels=draw_labels)
 
 
@@ -317,7 +350,7 @@ def run_pipeline(input_source, output_base_dir="visualization", mode='largest'):
             output_path = output_base_dir / input_path.name
             process_image(input_path, output_path, mode)
         else:
-            print("Định dạng file không được hỗ trợ (cần .png, .jpg, .jpeg, .webp).")
+            print("Định dạng file không được hỗ trợ (cần .png, .jpg, .jpeg, .webp, .heic, .heif).")
             
     elif input_path.is_dir():
         # Nếu truyền vào folder: duyệt qua tất cả sub-folder

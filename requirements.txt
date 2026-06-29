@@ -3,4 +3,5 @@ gunicorn==23.0.0
 mediapipe==0.10.9
 numpy==2.0.2
 opencv-python-headless==4.13.0.92
+pillow-heif
 Werkzeug==2.2.3

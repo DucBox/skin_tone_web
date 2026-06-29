@@ -9,9 +9,17 @@ import numpy as np
 from flask import Flask, render_template, request
 
 try:
-    from app.tool_calc_L import SUPPORTED_IMAGE_EXTENSIONS, analyze_image_array
+    from app.tool_calc_L import (
+        SUPPORTED_IMAGE_EXTENSIONS,
+        analyze_image_array,
+        decode_image_bytes,
+    )
 except ModuleNotFoundError:
-    from tool_calc_L import SUPPORTED_IMAGE_EXTENSIONS, analyze_image_array
+    from tool_calc_L import (
+        SUPPORTED_IMAGE_EXTENSIONS,
+        analyze_image_array,
+        decode_image_bytes,
+    )
 
 
 app = Flask(__name__, template_folder="templates")
@@ -31,11 +39,11 @@ def decode_uploaded_file(file_storage):
     if file_storage is None or not file_storage.filename:
         return None
 
-    file_bytes = np.frombuffer(file_storage.read(), dtype=np.uint8)
-    if file_bytes.size == 0:
+    file_bytes = file_storage.read()
+    if not file_bytes:
         return None
 
-    return cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
+    return decode_image_bytes(file_bytes)
 
 
 def decode_camera_data(data_url):
@@ -190,7 +198,7 @@ def index():
         if not analyzed_items:
             error = (
                 "Vui lòng tải lên 1 ảnh hợp lệ hoặc chọn thư mục chứa ảnh "
-                "(.png, .jpg, .jpeg, .webp)."
+                "(.png, .jpg, .jpeg, .webp, .heic, .heif)."
             )
 
     selected_item = analyzed_items[0] if analyzed_items else None
