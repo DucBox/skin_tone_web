@@ -62,6 +62,7 @@ def encode_image_data_url(image_bgr):
 
 def encode_csv_data_url(analyzed_items):
     buffer = io.StringIO()
+    buffer.write("sep=;\n")
     writer = csv.DictWriter(
         buffer,
         fieldnames=[
@@ -75,6 +76,8 @@ def encode_csv_data_url(analyzed_items):
             "nguong_nhom",
             "thong_bao",
         ],
+        delimiter=";",
+        lineterminator="\n",
     )
     writer.writeheader()
 
