@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Công cụ chấm màu da</title>
+  <style>
+    :root {
+      --bg: #f4ede2;
+      --panel: rgba(255, 251, 245, 0.92);
+      --panel-strong: rgba(255, 255, 255, 0.82);
+      --ink: #1f1a15;
+      --muted: #6c6458;
+      --accent: #cb6d2d;
+      --accent-2: #325b84;
+      --line: rgba(31, 26, 21, 0.11);
+      --shadow: 0 22px 70px rgba(52, 36, 20, 0.12);
+      --success: #1d6d46;
+      --danger: #9f3b28;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      font-family: Georgia, "Times New Roman", serif;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at top left, rgba(203, 109, 45, 0.14), transparent 26%),
+        radial-gradient(circle at top right, rgba(50, 91, 132, 0.16), transparent 24%),
+        linear-gradient(180deg, #faf5ee 0%, #f0e6d8 100%);
+    }
+
+    .page {
+      width: min(1380px, calc(100% - 28px));
+      margin: 0 auto;
+      padding: 24px 0 36px;
+    }
+
+    .hero {
+      padding: 24px 26px;
+      border-radius: 28px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      box-shadow: var(--shadow);
+      margin-bottom: 20px;
+    }
+
+    .eyebrow {
+      display: inline-block;
+      margin-bottom: 10px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      background: rgba(203, 109, 45, 0.12);
+      color: #8a4e1e;
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: clamp(34px, 5vw, 58px);
+      line-height: 0.94;
+    }
+
+    .hero p {
+      margin: 0;
+      max-width: 880px;
+      color: var(--muted);
+      font-size: 18px;
+      line-height: 1.6;
+    }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: 340px 1fr;
+      gap: 18px;
+      align-items: start;
+    }
+
+    .panel {
+      border-radius: 28px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      box-shadow: var(--shadow);
+    }
+
+    .sidebar {
+      padding: 20px;
+      position: sticky;
+      top: 16px;
+    }
+
+    .section-title {
+      margin: 0 0 14px;
+      font-size: 23px;
+    }
+
+    .sidebar p {
+      margin: 0 0 16px;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    .field {
+      margin-bottom: 16px;
+    }
+
+    .field label {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    input[type="file"] {
+      width: 100%;
+      padding: 14px;
+      border-radius: 18px;
+      border: 1px dashed rgba(31, 26, 21, 0.18);
+      background: rgba(255, 255, 255, 0.72);
+    }
+
+    video,
+    canvas {
+      width: 100%;
+      border-radius: 18px;
+      background: #ddd7ce;
+      object-fit: cover;
+    }
+
+    .camera-shell {
+      display: grid;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .button-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    button,
+    .action-link {
+      border: 0;
+      border-radius: 999px;
+      padding: 12px 18px;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.18s ease, opacity 0.18s ease;
+    }
+
+    button:hover,
+    .action-link:hover {
+      transform: translateY(-1px);
+    }
+
+    .primary {
+      background: linear-gradient(135deg, #cf7231, #bb5630);
+      color: #fff;
+    }
+
+    .secondary {
+      background: rgba(50, 91, 132, 0.12);
+      color: var(--accent-2);
+    }
+
+    .hint,
+    .error {
+      margin-top: 12px;
+      padding: 12px 14px;
+      border-radius: 16px;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .hint {
+      background: rgba(50, 91, 132, 0.1);
+      color: #2b5986;
+    }
+
+    .error {
+      background: rgba(189, 75, 52, 0.12);
+      color: var(--danger);
+    }
+
+    .summary {
+      margin-top: 18px;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .mini-stat {
+      padding: 14px;
+      border-radius: 18px;
+      border: 1px solid var(--line);
+      background: var(--panel-strong);
+    }
+
+    .mini-stat .label {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+    }
+
+    .mini-stat .value {
+      font-size: 26px;
+      font-weight: 700;
+    }
+
+    .results {
+      padding: 20px;
+    }
+
+    .results-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: end;
+      margin-bottom: 16px;
+    }
+
+    .results-head p {
+      margin: 6px 0 0;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .content-grid {
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      gap: 18px;
+      align-items: start;
+    }
+
+    .history-list {
+      display: grid;
+      gap: 10px;
+      max-height: 760px;
+      overflow: auto;
+      padding-right: 4px;
+    }
+
+    .history-item {
+      width: 100%;
+      text-align: left;
+      border-radius: 20px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.72);
+      padding: 14px 15px;
+    }
+
+    .history-item.active {
+      border-color: rgba(203, 109, 45, 0.45);
+      background: rgba(203, 109, 45, 0.11);
+    }
+
+    .history-path {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 15px;
+      line-height: 1.4;
+      word-break: break-word;
+    }
+
+    .history-meta {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      align-items: center;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 12px;
+      font-weight: 700;
+      background: rgba(31, 26, 21, 0.08);
+      color: var(--ink);
+    }
+
+    .badge.ok {
+      background: rgba(29, 109, 70, 0.12);
+      color: var(--success);
+    }
+
+    .badge.fail {
+      background: rgba(159, 59, 40, 0.12);
+      color: var(--danger);
+    }
+
+    .detail-shell {
+      min-width: 0;
+    }
+
+    .image-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .image-card,
+    .detail-card {
+      padding: 16px;
+      border-radius: 24px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.74);
+    }
+
+    .image-card h3,
+    .detail-card h3 {
+      margin: 0 0 12px;
+      font-size: 17px;
+    }
+
+    .image-card img {
+      width: 100%;
+      border-radius: 18px;
+      background: #ddd7ce;
+      object-fit: cover;
+    }
+
+    .detail-card dl {
+      margin: 0;
+      display: grid;
+      grid-template-columns: 170px 1fr;
+      gap: 10px 14px;
+    }
+
+    .detail-card dt {
+      color: var(--muted);
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      font-weight: 700;
+    }
+
+    .detail-card dd {
+      margin: 0;
+      font-size: 17px;
+      word-break: break-word;
+    }
+
+    .placeholder {
+      min-height: 500px;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      color: var(--muted);
+      padding: 28px;
+      border-radius: 26px;
+      border: 1px dashed rgba(31, 26, 21, 0.18);
+      background: rgba(255, 255, 255, 0.45);
+    }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      display: none;
+      place-items: center;
+      padding: 20px;
+      background: rgba(20, 16, 12, 0.48);
+      z-index: 30;
+    }
+
+    .modal-backdrop.open {
+      display: grid;
+    }
+
+    .modal-card {
+      width: min(760px, 100%);
+      max-height: min(82vh, 920px);
+      overflow: auto;
+      padding: 22px;
+      border-radius: 26px;
+      border: 1px solid var(--line);
+      background: #fffaf4;
+      box-shadow: var(--shadow);
+    }
+
+    .modal-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: start;
+      margin-bottom: 14px;
+    }
+
+    .modal-head h3 {
+      margin: 0 0 6px;
+      font-size: 24px;
+    }
+
+    .modal-head p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .ghost-button {
+      background: rgba(31, 26, 21, 0.08);
+      color: var(--ink);
+    }
+
+    .group-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      font-size: 15px;
+    }
+
+    .group-table th,
+    .group-table td {
+      padding: 12px 10px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    .group-table th {
+      font-size: 12px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .modal-note {
+      margin-top: 14px;
+      padding: 14px 16px;
+      border-radius: 18px;
+      background: rgba(50, 91, 132, 0.08);
+      color: var(--accent-2);
+      line-height: 1.5;
+    }
+
+    @media (max-width: 1080px) {
+      .workspace,
+      .content-grid,
+      .image-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        position: static;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <section class="hero">
+      <div class="eyebrow">Bản test</div>
+      <h1>Chấm nhóm màu da</h1>
+      <p>Tải 1 ảnh hoặc 1 thư mục ảnh để xem kết quả.</p>
+      <div class="button-row" style="margin-top:14px;">
+        <button class="secondary" type="button" id="open-group-guide">Xem nhóm màu da</button>
+      </div>
+    </section>
+
+    <div class="workspace">
+      <aside class="panel sidebar">
+        <h2 class="section-title">Input</h2>
+        <p>Chọn 1 ảnh hoặc 1 thư mục.</p>
+
+        <form method="post" enctype="multipart/form-data">
+          <div class="field">
+            <label for="single_image">1 ảnh cụ thể</label>
+            <input id="single_image" type="file" name="single_image" accept="image/*">
+          </div>
+
+          {% if test_mode %}
+            <div class="field">
+              <label>Chụp bằng camera</label>
+              <div class="camera-shell">
+                <video id="camera-preview" playsinline autoplay muted></video>
+                <canvas id="camera-canvas" hidden></canvas>
+              </div>
+              <input type="hidden" id="camera_image" name="camera_image">
+              <div class="button-row" style="margin-top:10px;">
+                <button class="secondary" type="button" id="start-camera">Mở camera</button>
+                <button class="secondary" type="button" id="capture-camera">Chụp</button>
+                <button class="secondary" type="button" id="clear-camera">Xóa</button>
+              </div>
+            </div>
+          {% endif %}
+
+          <div class="field">
+            <label for="folder_files">Upload folder ảnh</label>
+            <input id="folder_files" type="file" name="folder_files" accept="image/*" webkitdirectory directory multiple>
+          </div>
+
+          <div class="button-row">
+            <button class="primary" type="submit">Chấm</button>
+            <button class="secondary" type="reset">Xóa chọn</button>
+          </div>
+        </form>
+
+        <div class="hint">
+          Nếu trình duyệt không hỗ trợ chọn thư mục, hãy tải 1 ảnh.
+        </div>
+
+        {% if error %}
+          <div class="error">{{ error }}</div>
+        {% endif %}
+
+        <div class="summary">
+          <div class="mini-stat">
+            <span class="label">Tổng</span>
+            <span class="value">{{ total_count }}</span>
+          </div>
+          <div class="mini-stat">
+            <span class="label">Thành công</span>
+            <span class="value">{{ success_count }}</span>
+          </div>
+        </div>
+      </aside>
+
+      <section class="panel results">
+        <div class="results-head">
+          <div>
+            <h2 class="section-title">Danh sách ảnh đã chấm</h2>
+            <p>Bấm vào 1 ảnh để xem chi tiết.</p>
+          </div>
+          {% if csv_export_url %}
+            <a
+              class="secondary action-link"
+              href="{{ csv_export_url }}"
+              download="ket_qua_cham_mau_da.csv"
+              style="display:inline-flex; align-items:center; justify-content:center; text-decoration:none;"
+            >
+              Xuất CSV
+            </a>
+          {% endif %}
+        </div>
+
+        {% if analyzed_items %}
+          <div class="content-grid">
+            <div class="history-list" id="history-list">
+              {% for item in analyzed_items %}
+                <button
+                  class="history-item {% if loop.first %}active{% endif %}"
+                  type="button"
+                  data-item='{{ item | tojson | safe }}'
+                >
+                  <span class="history-path">{{ item.display_path }}</span>
+                  <span class="history-meta">
+                    {% if item.ok %}
+                      <span class="badge ok">Group {{ item.skin_tone_group }}</span>
+                      <span>L* {{ item.average_lstar }}</span>
+                    {% else %}
+                      <span class="badge fail">Lỗi</span>
+                      <span>Xem lỗi</span>
+                    {% endif %}
+                  </span>
+                </button>
+              {% endfor %}
+            </div>
+
+            <div class="detail-shell" id="detail-shell">
+              <div class="image-grid">
+                <article class="image-card">
+                  <h3>Ảnh gốc</h3>
+                  <img id="original-image" src="{{ selected_item.original_image_url }}" alt="Original image">
+                </article>
+                <article class="image-card">
+                  <h3>Ảnh visualization</h3>
+                  <img id="visualization-image" src="{{ selected_item.visualization_image_url }}" alt="Visualization image">
+                </article>
+              </div>
+
+              <article class="detail-card">
+                <h3>Thông tin kết quả</h3>
+                <dl>
+                  <dt>Đường dẫn ảnh</dt>
+                  <dd id="detail-path">{{ selected_item.display_path }}</dd>
+
+                  <dt>Trạng thái</dt>
+                  <dd id="detail-status">{% if selected_item.ok %}Thành công{% else %}Lỗi{% endif %}</dd>
+
+                  <dt>L* má trái</dt>
+                  <dd id="detail-left">{{ selected_item.left_lstar if selected_item.left_lstar is not none else "Không có" }}</dd>
+
+                  <dt>L* má phải</dt>
+                  <dd id="detail-right">{{ selected_item.right_lstar if selected_item.right_lstar is not none else "Không có" }}</dd>
+
+                  <dt>L* trung bình</dt>
+                  <dd id="detail-average">{{ selected_item.average_lstar if selected_item.average_lstar is not none else "Không có" }}</dd>
+
+                  <dt>Nhóm màu da</dt>
+                  <dd id="detail-group">{% if selected_item.skin_tone_group is not none %}{{ selected_item.skin_tone_group }} - {{ selected_item.skin_tone_label }}{% else %}Không có{% endif %}</dd>
+
+                  <dt>Ngưỡng nhóm</dt>
+                  <dd id="detail-range">{{ selected_item.skin_tone_range if selected_item.skin_tone_range else "Không có" }}</dd>
+
+                  <dt>Thông báo</dt>
+                  <dd id="detail-message">{{ selected_item.message }}</dd>
+                </dl>
+              </article>
+            </div>
+          </div>
+        {% else %}
+          <div class="placeholder">
+            <div>
+              <h3 style="margin-top:0;">Chưa có ảnh</h3>
+              <p style="margin-bottom:0;">Tải ảnh lên để bắt đầu.</p>
+            </div>
+          </div>
+        {% endif %}
+      </section>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="group-guide-modal" aria-hidden="true">
+    <div class="modal-card">
+      <div class="modal-head">
+        <div>
+          <h3>Nhóm màu da tham khảo</h3>
+          <p>Đối chiếu theo L* trung bình của má trái và má phải.</p>
+        </div>
+        <button class="ghost-button" type="button" id="close-group-guide">Đóng</button>
+      </div>
+
+      <table class="group-table">
+        <thead>
+          <tr>
+            <th>Nhóm</th>
+            <th>L*</th>
+            <th>Màu da</th>
+            <th>Tham chiếu</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>1</td>
+            <td>>= 70</td>
+            <td>Rất sáng / Trắng</td>
+            <td>Bắc/Tây Âu, Đông Bắc Á sáng</td>
+          </tr>
+          <tr>
+            <td>2</td>
+            <td>57-70</td>
+            <td>Vàng sáng / Olive nhạt</td>
+            <td>Người Kinh sáng, Đông Nam Á</td>
+          </tr>
+          <tr>
+            <td>3</td>
+            <td>44-57</td>
+            <td>Nâu nhạt / Olive đậm</td>
+            <td>Người Kinh tối, Khmer</td>
+          </tr>
+          <tr>
+            <td>4</td>
+            <td>32-44</td>
+            <td>Nâu đậm</td>
+            <td>Tây Nguyên, Đông Phi sáng</td>
+          </tr>
+          <tr>
+            <td>5</td>
+            <td>&lt; 32</td>
+            <td>Rất tối / Đen</td>
+            <td>Tây Phi, Trung Phi</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="modal-note">
+        Kết quả cuối = trung bình L* má trái và L* má phải.
+      </div>
+    </div>
+  </div>
+
+  {% if analyzed_items %}
+    <script>
+      const historyButtons = document.querySelectorAll(".history-item");
+      const originalImage = document.getElementById("original-image");
+      const visualizationImage = document.getElementById("visualization-image");
+      const detailPath = document.getElementById("detail-path");
+      const detailStatus = document.getElementById("detail-status");
+      const detailLeft = document.getElementById("detail-left");
+      const detailRight = document.getElementById("detail-right");
+      const detailAverage = document.getElementById("detail-average");
+      const detailGroup = document.getElementById("detail-group");
+      const detailRange = document.getElementById("detail-range");
+      const detailMessage = document.getElementById("detail-message");
+
+      function renderItem(item) {
+        originalImage.src = item.original_image_url || "";
+        visualizationImage.src = item.visualization_image_url || "";
+        detailPath.textContent = item.display_path || "N/A";
+        detailStatus.textContent = item.ok ? "Thành công" : "Lỗi";
+        detailLeft.textContent = item.left_lstar ?? "Không có";
+        detailRight.textContent = item.right_lstar ?? "Không có";
+        detailAverage.textContent = item.average_lstar ?? "Không có";
+        detailGroup.textContent = item.skin_tone_group !== null && item.skin_tone_group !== undefined
+          ? `${item.skin_tone_group} - ${item.skin_tone_label}`
+          : "Không có";
+        detailRange.textContent = item.skin_tone_range || "Không có";
+        detailMessage.textContent = item.message || "Không có";
+      }
+
+      historyButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+          historyButtons.forEach((item) => item.classList.remove("active"));
+          button.classList.add("active");
+          renderItem(JSON.parse(button.dataset.item));
+        });
+      });
+    </script>
+  {% endif %}
+
+  <script>
+    const groupGuideModal = document.getElementById("group-guide-modal");
+    const openGroupGuideButton = document.getElementById("open-group-guide");
+    const closeGroupGuideButton = document.getElementById("close-group-guide");
+
+    function openGroupGuide() {
+      groupGuideModal?.classList.add("open");
+      groupGuideModal?.setAttribute("aria-hidden", "false");
+    }
+
+    function closeGroupGuide() {
+      groupGuideModal?.classList.remove("open");
+      groupGuideModal?.setAttribute("aria-hidden", "true");
+    }
+
+    openGroupGuideButton?.addEventListener("click", openGroupGuide);
+    closeGroupGuideButton?.addEventListener("click", closeGroupGuide);
+    groupGuideModal?.addEventListener("click", (event) => {
+      if (event.target === groupGuideModal) {
+        closeGroupGuide();
+      }
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        closeGroupGuide();
+      }
+    });
+  </script>
+
+  {% if test_mode %}
+    <script>
+      const startCameraButton = document.getElementById("start-camera");
+      const captureButton = document.getElementById("capture-camera");
+      const clearButton = document.getElementById("clear-camera");
+      const video = document.getElementById("camera-preview");
+      const canvas = document.getElementById("camera-canvas");
+      const hiddenInput = document.getElementById("camera_image");
+      const fileInput = document.getElementById("single_image");
+      let mediaStream = null;
+
+      async function startCamera() {
+        if (mediaStream) return;
+        try {
+          mediaStream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: "user" },
+            audio: false
+          });
+          video.srcObject = mediaStream;
+        } catch (error) {
+          window.alert("Không mở được camera.");
+        }
+      }
+
+      function captureFrame() {
+        if (!mediaStream) {
+          window.alert("Hãy mở camera trước.");
+          return;
+        }
+        const width = video.videoWidth;
+        const height = video.videoHeight;
+        if (!width || !height) {
+          window.alert("Camera chưa sẵn sàng.");
+          return;
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const context = canvas.getContext("2d");
+        context.drawImage(video, 0, 0, width, height);
+        hiddenInput.value = canvas.toDataURL("image/jpeg", 0.95);
+        canvas.hidden = false;
+        fileInput.value = "";
+      }
+
+      function clearCapture() {
+        hiddenInput.value = "";
+        canvas.hidden = true;
+        const context = canvas.getContext("2d");
+        if (context) {
+          context.clearRect(0, 0, canvas.width, canvas.height);
+        }
+      }
+
+      startCameraButton?.addEventListener("click", startCamera);
+      captureButton?.addEventListener("click", captureFrame);
+      clearButton?.addEventListener("click", clearCapture);
+      fileInput?.addEventListener("change", () => {
+        if (fileInput.files.length > 0) {
+          clearCapture();
+        }
+      });
+    </script>
+  {% endif %}
+</body>
+</html>
