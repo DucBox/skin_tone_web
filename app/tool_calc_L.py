@@ -104,17 +104,26 @@ def create_polygon_mask(shape, polygon_points):
     return mask
 
 
-def compute_mean_lstar(image_bgr, polygon_points):
-    mask = create_polygon_mask(image_bgr.shape, polygon_points)
-    image_lab = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2LAB)
+def extract_lstar_pixels(image_lab, polygon_points):
+    mask = create_polygon_mask(image_lab.shape, polygon_points)
     l_channel = image_lab[:, :, 0].astype(np.float32)
-    selected_pixels = l_channel[mask > 0]
+    return l_channel[mask > 0]
 
+
+def l_channel_mean_to_lstar(selected_pixels):
     if selected_pixels.size == 0:
         return None
 
     # OpenCV stores L in [0, 255]; convert to CIE L* in [0, 100].
     return float(selected_pixels.mean() * 100.0 / 255.0)
+
+
+def compute_mean_lstar(image_bgr, polygon_points):
+    mask = create_polygon_mask(image_bgr.shape, polygon_points)
+    image_lab = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2LAB)
+    l_channel = image_lab[:, :, 0].astype(np.float32)
+    selected_pixels = l_channel[mask > 0]
+    return l_channel_mean_to_lstar(selected_pixels)
 
 
 def classify_skin_tone(lstar_value):
@@ -251,16 +260,20 @@ def analyze_image_array(image, mode='largest', draw_labels=True):
     selected_faces = select_faces(results.multi_face_landmarks, width, height, mode=mode)
     annotated_image = image.copy()
     face_results = []
+    image_lab = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)
 
     for face_index, face_landmarks in enumerate(selected_faces, start=1):
         cheek_regions = draw_cheek_regions(annotated_image, face_landmarks, width, height)
-        left_lstar = compute_mean_lstar(image, cheek_regions["left_polygon"])
-        right_lstar = compute_mean_lstar(image, cheek_regions["right_polygon"])
+        left_pixels = extract_lstar_pixels(image_lab, cheek_regions["left_polygon"])
+        right_pixels = extract_lstar_pixels(image_lab, cheek_regions["right_polygon"])
+        left_lstar = l_channel_mean_to_lstar(left_pixels)
+        right_lstar = l_channel_mean_to_lstar(right_pixels)
 
         if left_lstar is None or right_lstar is None:
             continue
 
-        final_lstar = (left_lstar + right_lstar) / 2.0
+        combined_pixels = np.concatenate((left_pixels, right_pixels))
+        final_lstar = l_channel_mean_to_lstar(combined_pixels)
         skin_tone_group = classify_skin_tone(final_lstar)
         label_lines = build_label_lines(
             left_lstar,
