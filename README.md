@@ -22,13 +22,13 @@ Web hien ho tro:
 - Tai 1 anh
 - Tai ca folder anh
 - Mo camera trong browser
-- Chinh `brightness scale` o ban dev
 - Xem anh goc
 - Xem anh visualization
 - Xem `L*` ma trai, `L*` ma phai, `L*` cuoi, nhom mau da
 - Xuat CSV
 
 Ghi chu:
+- Web hien dang co dinh `brightness scale = 0.85` o backend
 - `brightness scale` chi anh huong den backend tinh `L*`
 - Anh goc va visualization van dung anh goc
 - Hien tai ban Railway dang duoc de o dev phase nen control nay duoc bat san

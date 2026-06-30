@@ -10,8 +10,6 @@ from flask import Flask, render_template, request
 
 try:
     from app.tool_calc_L import (
-        MAX_BRIGHTNESS_SCALE,
-        MIN_BRIGHTNESS_SCALE,
         SUPPORTED_IMAGE_EXTENSIONS,
         analyze_image_array,
         decode_image_bytes,
@@ -19,8 +17,6 @@ try:
     )
 except ModuleNotFoundError:
     from tool_calc_L import (
-        MAX_BRIGHTNESS_SCALE,
-        MIN_BRIGHTNESS_SCALE,
         SUPPORTED_IMAGE_EXTENSIONS,
         analyze_image_array,
         decode_image_bytes,
@@ -39,9 +35,7 @@ def env_flag(name, default=False):
 
 
 TEST_MODE = env_flag("APP_TEST_MODE", default=True)
-DEFAULT_BRIGHTNESS_SCALE = normalize_brightness_scale(
-    os.environ.get("APP_BRIGHTNESS_SCALE", "1.0")
-)
+DEFAULT_BRIGHTNESS_SCALE = normalize_brightness_scale(0.85)
 
 
 def decode_uploaded_file(file_storage):
@@ -120,12 +114,6 @@ def encode_csv_data_url(analyzed_items):
 
 def allowed_image(filename):
     return Path(filename).suffix.lower() in SUPPORTED_IMAGE_EXTENSIONS
-
-
-def parse_brightness_scale(form_value):
-    if TEST_MODE and form_value is not None and form_value != "":
-        return normalize_brightness_scale(form_value)
-    return DEFAULT_BRIGHTNESS_SCALE
 
 
 def build_item_result(display_path, analysis_result):
@@ -211,7 +199,6 @@ def index():
         single_image = request.files.get("single_image")
         folder_files = request.files.getlist("folder_files")
         camera_image = request.form.get("camera_image", "").strip()
-        brightness_scale = parse_brightness_scale(request.form.get("brightness_scale"))
 
         if single_image and single_image.filename:
             analyzed_items = analyze_files([single_image], brightness_scale)
@@ -245,9 +232,6 @@ def index():
         total_count=total_count,
         success_count=success_count,
         csv_export_url=csv_export_url,
-        brightness_scale=brightness_scale,
-        min_brightness_scale=MIN_BRIGHTNESS_SCALE,
-        max_brightness_scale=MAX_BRIGHTNESS_SCALE,
         test_mode=TEST_MODE,
     )
 

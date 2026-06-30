@@ -571,21 +571,6 @@
               </div>
             </div>
 
-            <div class="field">
-              <label for="brightness_scale">Brightness scale backend</label>
-              <input
-                id="brightness_scale"
-                type="number"
-                name="brightness_scale"
-                min="{{ min_brightness_scale }}"
-                max="{{ max_brightness_scale }}"
-                step="0.05"
-                value="{{ '%.2f'|format(brightness_scale) }}"
-              >
-              <div class="hint" style="margin-top:10px;">
-                1.0 = giữ nguyên, 0.9 = giảm 10%, 1.1 = tăng 10%.
-              </div>
-            </div>
           {% endif %}
 
           <div class="field">
