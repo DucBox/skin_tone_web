@@ -29,6 +29,8 @@ Web hien ho tro:
 
 ### Cach 2: chay web bang Docker
 
+Dockerfile nay la ban don gian cho local/web app, khong dung cho flow server noi bo.
+
 Build:
 
 ```bash
@@ -133,10 +135,19 @@ Trong thu muc output se co:
 
 ## 3. Chay batch bang Docker
 
+Phan nay moi la flow Docker danh cho server noi bo. Neu can base image, proxy, pip registry noi bo thi truyen qua `--build-arg`.
+
 Build:
 
 ```bash
-docker build -f Dockerfile.batch -t skin-tone-batch .
+docker build -f Dockerfile.batch \
+  --build-arg BASE_IMAGE=10.30.154.118:8989/nvidia/pytorch:25.10-py3 \
+  --build-arg http_proxy=http://10.30.153.169:3128 \
+  --build-arg https_proxy=http://10.30.153.169:3128 \
+  --build-arg PIP_INDEX_URL=http://10.30.154.118:8888/repository/Python/simple \
+  --build-arg PIP_EXTRA_INDEX_URL=http://10.30.154.118:8888/repository/Python/ngc \
+  --build-arg PIP_TRUSTED_HOST=10.30.154.118 \
+  -t skin-tone-batch .
 ```
 
 Run container:
