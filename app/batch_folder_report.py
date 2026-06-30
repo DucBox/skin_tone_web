@@ -131,6 +131,10 @@ def lstar_chart_path(output_dir):
     return output_dir / "phan_phoi_gia_tri_lstar.png"
 
 
+def status_chart_path(output_dir):
+    return output_dir / "ty_le_pass_fail.png"
+
+
 def save_visualization(image, output_path):
     ensure_parent_dir(output_path)
     cv2.imwrite(str(output_path), image)
@@ -267,6 +271,30 @@ def render_lstar_distribution(rows, output_path):
     plt.close()
 
 
+def render_status_distribution(rows, output_path):
+    success_count = sum(1 for row in rows if row["trang_thai"] == "Thanh cong")
+    fail_count = len(rows) - success_count
+    values = [success_count, fail_count]
+    labels = ["Pass", "Fail"]
+    colors = ["#1d6d46", "#9f3b28"]
+
+    plt.figure(figsize=(6, 6))
+    plt.pie(
+        values,
+        labels=labels,
+        colors=colors,
+        autopct="%1.1f%%",
+        startangle=90,
+        wedgeprops={"edgecolor": "white", "linewidth": 2},
+    )
+    plt.title("Ty le pass / fail")
+    plt.tight_layout()
+
+    ensure_parent_dir(output_path)
+    plt.savefig(output_path, dpi=180)
+    plt.close()
+
+
 def run_batch(input_dir, output_dir, mode, match_type, image_type):
     image_paths = collect_image_paths(input_dir, match_type, image_type)
     if not image_paths:
@@ -301,12 +329,20 @@ def run_batch(input_dir, output_dir, mode, match_type, image_type):
     write_summary_csv(rows, summary_csv_path(output_dir))
     render_group_distribution(rows, group_chart_path(output_dir))
     render_lstar_distribution(rows, lstar_chart_path(output_dir))
+    render_status_distribution(rows, status_chart_path(output_dir))
 
     success_count = sum(1 for row in rows if row["trang_thai"] == "Thanh cong")
-    print(f"Da xu ly {len(rows)} anh. Thanh cong: {success_count}.")
+    fail_count = len(rows) - success_count
+    success_rate = (success_count / len(rows)) * 100.0
+    fail_rate = (fail_count / len(rows)) * 100.0
+    print(
+        f"Da xu ly {len(rows)} anh. Pass: {success_count} ({success_rate:.2f}%). "
+        f"Fail: {fail_count} ({fail_rate:.2f}%)."
+    )
     print(f"CSV: {summary_csv_path(output_dir)}")
     print(f"Chart nhom da: {group_chart_path(output_dir)}")
     print(f"Chart L*: {lstar_chart_path(output_dir)}")
+    print(f"Chart pass/fail: {status_chart_path(output_dir)}")
     print(f"Visualization: {output_dir / 'visualizations'}")
     print(f"Bo loc: match_type={match_type}, image_type={image_type}")
 

@@ -131,6 +131,7 @@ Trong thu muc output se co:
 - `tong_hop_ket_qua.csv`
 - `phan_phoi_nhom_da.png`
 - `phan_phoi_gia_tri_lstar.png`
+- `ty_le_pass_fail.png`
 - `visualizations/...`
 
 ## 3. Chay batch bang Docker
