@@ -221,12 +221,14 @@ def build_label_lines(left_lstar, right_lstar, final_lstar, skin_tone_group):
     lines = [
         f"L* trai: {left_lstar:.2f}",
         f"L* phai: {right_lstar:.2f}",
-        f"L* TB: {final_lstar:.2f}",
+        f"L* cuoi: {final_lstar:.2f}",
     ]
     if skin_tone_group is None:
         lines.append("Nhom da: N/A")
     else:
-        lines.append(f"Nhom da: {skin_tone_group['group']}")
+        lines.append(
+            f"Nhom da: {skin_tone_group['group']} - {skin_tone_group['label']}"
+        )
     return lines
 
 
