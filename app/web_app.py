@@ -10,15 +10,21 @@ from flask import Flask, render_template, request
 
 try:
     from app.tool_calc_L import (
+        MAX_BRIGHTNESS_SCALE,
+        MIN_BRIGHTNESS_SCALE,
         SUPPORTED_IMAGE_EXTENSIONS,
         analyze_image_array,
         decode_image_bytes,
+        normalize_brightness_scale,
     )
 except ModuleNotFoundError:
     from tool_calc_L import (
+        MAX_BRIGHTNESS_SCALE,
+        MIN_BRIGHTNESS_SCALE,
         SUPPORTED_IMAGE_EXTENSIONS,
         analyze_image_array,
         decode_image_bytes,
+        normalize_brightness_scale,
     )
 
 
@@ -33,6 +39,9 @@ def env_flag(name, default=False):
 
 
 TEST_MODE = env_flag("APP_TEST_MODE", default=True)
+DEFAULT_BRIGHTNESS_SCALE = normalize_brightness_scale(
+    os.environ.get("APP_BRIGHTNESS_SCALE", "1.0")
+)
 
 
 def decode_uploaded_file(file_storage):
@@ -113,6 +122,12 @@ def allowed_image(filename):
     return Path(filename).suffix.lower() in SUPPORTED_IMAGE_EXTENSIONS
 
 
+def parse_brightness_scale(form_value):
+    if TEST_MODE and form_value is not None and form_value != "":
+        return normalize_brightness_scale(form_value)
+    return DEFAULT_BRIGHTNESS_SCALE
+
+
 def build_item_result(display_path, analysis_result):
     item = {
         "display_path": display_path,
@@ -153,7 +168,7 @@ def build_item_result(display_path, analysis_result):
     return item
 
 
-def analyze_files(file_storages):
+def analyze_files(file_storages, brightness_scale):
     results = []
     for file_storage in file_storages:
         if not file_storage or not file_storage.filename:
@@ -165,14 +180,24 @@ def analyze_files(file_storages):
         if image is None:
             continue
 
-        analysis_result = analyze_image_array(image, mode="largest", draw_labels=True)
+        analysis_result = analyze_image_array(
+            image,
+            mode="largest",
+            draw_labels=True,
+            brightness_scale=brightness_scale,
+        )
         results.append(build_item_result(file_storage.filename, analysis_result))
 
     return results
 
 
-def analyze_single_image(image, display_path):
-    analysis_result = analyze_image_array(image, mode="largest", draw_labels=True)
+def analyze_single_image(image, display_path, brightness_scale):
+    analysis_result = analyze_image_array(
+        image,
+        mode="largest",
+        draw_labels=True,
+        brightness_scale=brightness_scale,
+    )
     return [build_item_result(display_path, analysis_result)]
 
 
@@ -180,20 +205,26 @@ def analyze_single_image(image, display_path):
 def index():
     analyzed_items = []
     error = None
+    brightness_scale = DEFAULT_BRIGHTNESS_SCALE
 
     if request.method == "POST":
         single_image = request.files.get("single_image")
         folder_files = request.files.getlist("folder_files")
         camera_image = request.form.get("camera_image", "").strip()
+        brightness_scale = parse_brightness_scale(request.form.get("brightness_scale"))
 
         if single_image and single_image.filename:
-            analyzed_items = analyze_files([single_image])
+            analyzed_items = analyze_files([single_image], brightness_scale)
         elif camera_image:
             image = decode_camera_data(camera_image)
             if image is not None:
-                analyzed_items = analyze_single_image(image, "camera_capture.jpg")
+                analyzed_items = analyze_single_image(
+                    image,
+                    "camera_capture.jpg",
+                    brightness_scale,
+                )
         elif folder_files:
-            analyzed_items = analyze_files(folder_files)
+            analyzed_items = analyze_files(folder_files, brightness_scale)
 
         if not analyzed_items:
             error = (
@@ -214,6 +245,9 @@ def index():
         total_count=total_count,
         success_count=success_count,
         csv_export_url=csv_export_url,
+        brightness_scale=brightness_scale,
+        min_brightness_scale=MIN_BRIGHTNESS_SCALE,
+        max_brightness_scale=MAX_BRIGHTNESS_SCALE,
         test_mode=TEST_MODE,
     )
 

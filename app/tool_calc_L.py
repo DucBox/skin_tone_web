@@ -10,6 +10,8 @@ from pillow_heif import register_heif_opener
 register_heif_opener()
 
 SUPPORTED_IMAGE_EXTENSIONS = {'.png', '.jpg', '.jpeg', '.webp', '.heic', '.heif'}
+MIN_BRIGHTNESS_SCALE = 0.2
+MAX_BRIGHTNESS_SCALE = 2.0
 
 # Luu y: left/right o day la theo phia cua nguoi trong anh, khong phai phia nguoi xem.
 # Polygon duoc dat theo thu tu di quanh vung ma de mask ra "mieng ma" ro hon.
@@ -56,6 +58,24 @@ SKIN_TONE_GROUPS = [
 
 # Khởi tạo module Face Mesh của MediaPipe
 mp_face_mesh = mp.solutions.face_mesh
+
+
+def normalize_brightness_scale(brightness_scale):
+    try:
+        scale = float(brightness_scale)
+    except (TypeError, ValueError):
+        return 1.0
+    return max(MIN_BRIGHTNESS_SCALE, min(MAX_BRIGHTNESS_SCALE, scale))
+
+
+def adjust_measurement_brightness(image_bgr, brightness_scale):
+    scale = normalize_brightness_scale(brightness_scale)
+    if abs(scale - 1.0) < 1e-6:
+        return image_bgr
+
+    hsv_image = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2HSV).astype(np.float32)
+    hsv_image[:, :, 2] = np.clip(hsv_image[:, :, 2] * scale, 0, 255)
+    return cv2.cvtColor(hsv_image.astype(np.uint8), cv2.COLOR_HSV2BGR)
 
 
 def pil_to_bgr(pil_image):
@@ -232,22 +252,28 @@ def build_label_lines(left_lstar, right_lstar, final_lstar, skin_tone_group):
     return lines
 
 
-def _analyze_image_with_results(image, results, mode='largest', draw_labels=True):
-    height, width, _ = image.shape
+def _analyze_image_with_results(
+    original_image,
+    measurement_image,
+    results,
+    mode='largest',
+    draw_labels=True,
+):
+    height, width, _ = original_image.shape
 
     if not results.multi_face_landmarks:
         return {
             "ok": False,
             "message": "Không tìm thấy khuôn mặt.",
-            "original_image": image,
-            "visualization_image": image.copy(),
+            "original_image": original_image,
+            "visualization_image": original_image.copy(),
             "faces": [],
         }
 
     selected_faces = select_faces(results.multi_face_landmarks, width, height, mode=mode)
-    annotated_image = image.copy()
+    annotated_image = original_image.copy()
     face_results = []
-    image_lab = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)
+    image_lab = cv2.cvtColor(measurement_image, cv2.COLOR_BGR2LAB)
 
     for face_index, face_landmarks in enumerate(selected_faces, start=1):
         cheek_regions = draw_cheek_regions(annotated_image, face_landmarks, width, height)
@@ -289,7 +315,7 @@ def _analyze_image_with_results(image, results, mode='largest', draw_labels=True
         return {
             "ok": False,
             "message": "Không tính được L*.",
-            "original_image": image,
+            "original_image": original_image,
             "visualization_image": annotated_image,
             "faces": [],
         }
@@ -297,23 +323,36 @@ def _analyze_image_with_results(image, results, mode='largest', draw_labels=True
     return {
         "ok": True,
         "message": "Thành công.",
-        "original_image": image,
+        "original_image": original_image,
         "visualization_image": annotated_image,
         "faces": face_results,
     }
 
 
-def analyze_image_array(image, mode='largest', draw_labels=True, face_mesh=None):
+def analyze_image_array(
+    image,
+    mode='largest',
+    draw_labels=True,
+    face_mesh=None,
+    brightness_scale=1.0,
+):
     if image is None:
         return {
             "ok": False,
             "message": "Không đọc được ảnh.",
         }
 
-    image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    measurement_image = adjust_measurement_brightness(image, brightness_scale)
+    image_rgb = cv2.cvtColor(measurement_image, cv2.COLOR_BGR2RGB)
     if face_mesh is not None:
         results = face_mesh.process(image_rgb)
-        return _analyze_image_with_results(image, results, mode=mode, draw_labels=draw_labels)
+        return _analyze_image_with_results(
+            image,
+            measurement_image,
+            results,
+            mode=mode,
+            draw_labels=draw_labels,
+        )
 
     with mp_face_mesh.FaceMesh(
         static_image_mode=True,
@@ -323,12 +362,30 @@ def analyze_image_array(image, mode='largest', draw_labels=True, face_mesh=None)
     ) as local_face_mesh:
         results = local_face_mesh.process(image_rgb)
 
-    return _analyze_image_with_results(image, results, mode=mode, draw_labels=draw_labels)
+    return _analyze_image_with_results(
+        image,
+        measurement_image,
+        results,
+        mode=mode,
+        draw_labels=draw_labels,
+    )
 
 
-def analyze_image_path(image_path, mode='largest', draw_labels=True, face_mesh=None):
+def analyze_image_path(
+    image_path,
+    mode='largest',
+    draw_labels=True,
+    face_mesh=None,
+    brightness_scale=1.0,
+):
     image = load_image_path(image_path)
-    return analyze_image_array(image, mode=mode, draw_labels=draw_labels, face_mesh=face_mesh)
+    return analyze_image_array(
+        image,
+        mode=mode,
+        draw_labels=draw_labels,
+        face_mesh=face_mesh,
+        brightness_scale=brightness_scale,
+    )
 
 
 def print_analysis_summary(image_name, analysis_result):

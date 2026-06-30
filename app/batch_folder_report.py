@@ -1,5 +1,6 @@
 import argparse
 import csv
+import os
 from collections import Counter
 from pathlib import Path
 
@@ -13,22 +14,31 @@ from tqdm import tqdm
 
 try:
     from app.tool_calc_L import (
+        MAX_BRIGHTNESS_SCALE,
+        MIN_BRIGHTNESS_SCALE,
         SKIN_TONE_GROUPS,
         SUPPORTED_IMAGE_EXTENSIONS,
         analyze_image_path,
         mp_face_mesh,
+        normalize_brightness_scale,
     )
 except ModuleNotFoundError:
     from tool_calc_L import (
+        MAX_BRIGHTNESS_SCALE,
+        MIN_BRIGHTNESS_SCALE,
         SKIN_TONE_GROUPS,
         SUPPORTED_IMAGE_EXTENSIONS,
         analyze_image_path,
         mp_face_mesh,
+        normalize_brightness_scale,
     )
 
 
 DEFAULT_INPUT_DIR = "/mounted/input"
 DEFAULT_OUTPUT_DIR = "/mounted/output"
+DEFAULT_BRIGHTNESS_SCALE = normalize_brightness_scale(
+    os.environ.get("BATCH_BRIGHTNESS_SCALE", "1.0")
+)
 MATCH_DIR_OPTIONS = {
     "match": "Match",
     "non-match": "Non-Match",
@@ -70,6 +80,16 @@ def parse_args():
         default="all",
         choices=["all", "live", "portrait"],
         help="Loc theo ten anh live_ / portrait_.",
+    )
+    parser.add_argument(
+        "--brightness-scale",
+        type=float,
+        default=DEFAULT_BRIGHTNESS_SCALE,
+        help=(
+            f"He so do sang backend de tinh L*. 1.0 = giu nguyen, "
+            f"< 1.0 = giam sang, > 1.0 = tang sang. "
+            f"Gioi han {MIN_BRIGHTNESS_SCALE}-{MAX_BRIGHTNESS_SCALE}."
+        ),
     )
     return parser.parse_args()
 
@@ -296,13 +316,14 @@ def render_status_distribution(rows, output_path):
     plt.close()
 
 
-def run_batch(input_dir, output_dir, mode, match_type, image_type):
+def run_batch(input_dir, output_dir, mode, match_type, image_type, brightness_scale):
     image_paths = collect_image_paths(input_dir, match_type, image_type)
     if not image_paths:
         raise SystemExit("Khong tim thay anh hop le theo bo loc da chon.")
 
     output_dir.mkdir(parents=True, exist_ok=True)
     rows = []
+    brightness_scale = normalize_brightness_scale(brightness_scale)
 
     progress_desc = f"Dang xu ly anh ({match_type}/{image_type})"
     with mp_face_mesh.FaceMesh(
@@ -318,6 +339,7 @@ def run_batch(input_dir, output_dir, mode, match_type, image_type):
                 mode=mode,
                 draw_labels=True,
                 face_mesh=face_mesh,
+                brightness_scale=brightness_scale,
             )
             vis_path = None
 
@@ -346,6 +368,7 @@ def run_batch(input_dir, output_dir, mode, match_type, image_type):
     print(f"Chart pass/fail: {status_chart_path(output_dir)}")
     print(f"Visualization: {output_dir / 'visualizations'}")
     print(f"Bo loc: match_type={match_type}, image_type={image_type}")
+    print(f"Brightness scale: {brightness_scale:.2f}")
 
 
 def main():
@@ -356,7 +379,14 @@ def main():
     if not input_dir.exists() or not input_dir.is_dir():
         raise SystemExit("Thu muc dau vao khong ton tai hoac khong hop le.")
 
-    run_batch(input_dir, output_dir, args.mode, args.match_type, args.image_type)
+    run_batch(
+        input_dir,
+        output_dir,
+        args.mode,
+        args.match_type,
+        args.image_type,
+        args.brightness_scale,
+    )
 
 
 if __name__ == "__main__":

@@ -22,10 +22,16 @@ Web hien ho tro:
 - Tai 1 anh
 - Tai ca folder anh
 - Mo camera trong browser
+- Chinh `brightness scale` o ban dev
 - Xem anh goc
 - Xem anh visualization
 - Xem `L*` ma trai, `L*` ma phai, `L*` cuoi, nhom mau da
 - Xuat CSV
+
+Ghi chu:
+- `brightness scale` chi anh huong den backend tinh `L*`
+- Anh goc va visualization van dung anh goc
+- Production co the an field nay va set co dinh qua env `APP_BRIGHTNESS_SCALE`
 
 ### Cach 2: chay web bang Docker
 
@@ -112,7 +118,8 @@ python3 app/batch_folder_report.py \
   --input-dir /duong/dan/toi/root_folder \
   --output-dir /duong/dan/toi/folder_ket_qua \
   --match-type match \
-  --image-type live
+  --image-type live \
+  --brightness-scale 0.90
 ```
 
 Vi du chi thong ke anh `portrait_` trong `Non-Match`:
@@ -122,8 +129,18 @@ python3 app/batch_folder_report.py \
   --input-dir /duong/dan/toi/root_folder \
   --output-dir /duong/dan/toi/folder_ket_qua \
   --match-type non-match \
-  --image-type portrait
+  --image-type portrait \
+  --brightness-scale 1.00
 ```
+
+Gia tri `--brightness-scale`:
+- `1.0`: giu nguyen do sang
+- `< 1.0`: giam sang truoc khi tinh `L*`
+- `> 1.0`: tang sang truoc khi tinh `L*`
+
+Luu y:
+- Brightness chi tac dong den backend tinh `L*`
+- Visualization van luu tren anh goc
 
 ### File output cua batch
 
@@ -169,7 +186,8 @@ docker exec -it skin-tone-batch-job \
   --input-dir /mounted/input \
   --output-dir /mounted/output \
   --match-type match \
-  --image-type live
+  --image-type live \
+  --brightness-scale 0.90
 ```
 
 Ban chi can thay:
