@@ -139,13 +139,23 @@ Build:
 docker build -f Dockerfile.batch -t skin-tone-batch .
 ```
 
-Run:
+Run container:
 
 ```bash
-docker run --rm \
+docker run --rm -d \
+  --name skin-tone-batch-job \
   -v /path/to/your/images:/mounted/input \
   -v /path/to/your/output:/mounted/output \
-  skin-tone-batch \
+  skin-tone-batch
+```
+
+Exec vao container va chay lenh batch:
+
+```bash
+docker exec -it skin-tone-batch-job \
+  python3 app/batch_folder_report.py \
+  --input-dir /mounted/input \
+  --output-dir /mounted/output \
   --match-type match \
   --image-type live
 ```
@@ -153,6 +163,12 @@ docker run --rm \
 Ban chi can thay:
 - `/path/to/your/images`: thu muc anh dau vao
 - `/path/to/your/output`: thu muc muon luu ket qua
+
+Neu xong viec va muon vao shell:
+
+```bash
+docker exec -it skin-tone-batch-job bash
+```
 
 ## 4. Dinh dang anh duoc ho tro
 
