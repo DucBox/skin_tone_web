@@ -19,6 +19,14 @@ except ModuleNotFoundError:
 
 DEFAULT_INPUT_DIR = "/mounted/input"
 DEFAULT_OUTPUT_DIR = "/mounted/output"
+MATCH_DIR_OPTIONS = {
+    "match": "Match",
+    "non-match": "Non-Match",
+}
+IMAGE_ROLE_PREFIXES = {
+    "live": "live_",
+    "portrait": "portrait_",
+}
 
 
 def parse_args():
@@ -41,15 +49,56 @@ def parse_args():
         choices=["largest", "all"],
         help="largest: mat lon nhat, all: tat ca khuon mat.",
     )
+    parser.add_argument(
+        "--match-type",
+        default="all",
+        choices=["all", "match", "non-match"],
+        help="Loc theo folder Match / Non-Match.",
+    )
+    parser.add_argument(
+        "--image-type",
+        default="all",
+        choices=["all", "live", "portrait"],
+        help="Loc theo ten anh live_ / portrait_.",
+    )
     return parser.parse_args()
 
 
-def collect_image_paths(input_dir):
-    return sorted(
-        path
-        for path in input_dir.rglob("*")
-        if path.is_file() and path.suffix.lower() in SUPPORTED_IMAGE_EXTENSIONS
-    )
+def normalize_name(text):
+    return text.strip().lower()
+
+
+def selected_match_dirs(match_type):
+    if match_type == "all":
+        return list(MATCH_DIR_OPTIONS.values())
+    return [MATCH_DIR_OPTIONS[match_type]]
+
+
+def image_name_matches(image_path, image_type):
+    if image_path.suffix.lower() not in SUPPORTED_IMAGE_EXTENSIONS:
+        return False
+
+    if image_type == "all":
+        return True
+
+    file_name = normalize_name(image_path.name)
+    return file_name.startswith(IMAGE_ROLE_PREFIXES[image_type])
+
+
+def collect_image_paths(input_dir, match_type, image_type):
+    image_paths = []
+
+    for match_dir_name in selected_match_dirs(match_type):
+        match_dir = input_dir / match_dir_name
+        if not match_dir.exists() or not match_dir.is_dir():
+            continue
+
+        for id_dir in sorted(path for path in match_dir.iterdir() if path.is_dir()):
+            for image_path in sorted(path for path in id_dir.iterdir() if path.is_file()):
+                if image_name_matches(image_path, image_type):
+                    image_paths.append(image_path)
+
+    return image_paths
 
 
 def ensure_parent_dir(file_path):
@@ -77,9 +126,29 @@ def save_visualization(image, output_path):
     cv2.imwrite(str(output_path), image)
 
 
+def extract_match_context(relative_path):
+    parts = relative_path.parts
+    match_group = parts[0] if len(parts) >= 1 else ""
+    subject_id = parts[1] if len(parts) >= 2 else ""
+    file_name = parts[-1] if parts else ""
+
+    image_role = ""
+    file_name_lower = normalize_name(file_name)
+    for role, prefix in IMAGE_ROLE_PREFIXES.items():
+        if file_name_lower.startswith(prefix):
+            image_role = role
+            break
+
+    return match_group, subject_id, image_role
+
+
 def build_row(relative_path, analysis_result, visualization_path=None):
+    match_group, subject_id, image_role = extract_match_context(relative_path)
     row = {
         "duong_dan_anh": relative_path.as_posix(),
+        "nhom_du_lieu": match_group,
+        "id": subject_id,
+        "loai_anh": image_role,
         "trang_thai": "Thanh cong" if analysis_result["ok"] else "Loi",
         "lstar_ma_trai": "",
         "lstar_ma_phai": "",
@@ -116,6 +185,9 @@ def write_summary_csv(rows, output_path):
             file_obj,
             fieldnames=[
                 "duong_dan_anh",
+                "nhom_du_lieu",
+                "id",
+                "loai_anh",
                 "trang_thai",
                 "lstar_ma_trai",
                 "lstar_ma_phai",
@@ -185,15 +257,16 @@ def render_lstar_distribution(rows, output_path):
     plt.close()
 
 
-def run_batch(input_dir, output_dir, mode):
-    image_paths = collect_image_paths(input_dir)
+def run_batch(input_dir, output_dir, mode, match_type, image_type):
+    image_paths = collect_image_paths(input_dir, match_type, image_type)
     if not image_paths:
-        raise SystemExit("Khong tim thay anh hop le trong thu muc dau vao.")
+        raise SystemExit("Khong tim thay anh hop le theo bo loc da chon.")
 
     output_dir.mkdir(parents=True, exist_ok=True)
     rows = []
 
-    for image_path in tqdm(image_paths, desc="Dang xu ly anh", unit="anh"):
+    progress_desc = f"Dang xu ly anh ({match_type}/{image_type})"
+    for image_path in tqdm(image_paths, desc=progress_desc, unit="anh"):
         relative_path = image_path.relative_to(input_dir)
         analysis_result = analyze_image_path(image_path, mode=mode, draw_labels=True)
         vis_path = None
@@ -214,6 +287,7 @@ def run_batch(input_dir, output_dir, mode):
     print(f"Chart nhom da: {group_chart_path(output_dir)}")
     print(f"Chart L*: {lstar_chart_path(output_dir)}")
     print(f"Visualization: {output_dir / 'visualizations'}")
+    print(f"Bo loc: match_type={match_type}, image_type={image_type}")
 
 
 def main():
@@ -224,7 +298,7 @@ def main():
     if not input_dir.exists() or not input_dir.is_dir():
         raise SystemExit("Thu muc dau vao khong ton tai hoac khong hop le.")
 
-    run_batch(input_dir, output_dir, args.mode)
+    run_batch(input_dir, output_dir, args.mode, args.match_type, args.image_type)
 
 
 if __name__ == "__main__":

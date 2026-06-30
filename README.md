@@ -51,6 +51,23 @@ http://127.0.0.1:8091
 
 Script batch dung de xu ly ca 1 thu muc anh, luu visualization, xuat CSV, va ve 2 chart phan phoi.
 
+Cau truc root folder du kien:
+
+```text
+root/
+  Match/
+    1/
+      live_....jpg
+      portrait_....jpg
+    2/
+      live_....jpg
+      portrait_....jpg
+  Non-Match/
+    10001/
+      live_....jpg
+      portrait_....jpg
+```
+
 ### Chay bang Python
 
 ```bash
@@ -74,6 +91,38 @@ Gia tri `--mode`:
 - `largest`: lay khuon mat lon nhat
 - `all`: xu ly tat ca khuon mat
 
+Gia tri `--match-type`:
+- `all`: lay ca `Match` va `Non-Match`
+- `match`: chi lay folder `Match`
+- `non-match`: chi lay folder `Non-Match`
+
+Gia tri `--image-type`:
+- `all`: lay ca `live_` va `portrait_`
+- `live`: chi lay anh bat dau bang `live_`
+- `portrait`: chi lay anh bat dau bang `portrait_`
+
+Vi du chi thong ke anh `live_` trong `Match`:
+
+```bash
+MPLCONFIGDIR=/private/tmp/mplconfig \
+PYTHONPYCACHEPREFIX=/private/tmp/pycache \
+python3 app/batch_folder_report.py \
+  --input-dir /duong/dan/toi/root_folder \
+  --output-dir /duong/dan/toi/folder_ket_qua \
+  --match-type match \
+  --image-type live
+```
+
+Vi du chi thong ke anh `portrait_` trong `Non-Match`:
+
+```bash
+python3 app/batch_folder_report.py \
+  --input-dir /duong/dan/toi/root_folder \
+  --output-dir /duong/dan/toi/folder_ket_qua \
+  --match-type non-match \
+  --image-type portrait
+```
+
 ### File output cua batch
 
 Trong thu muc output se co:
@@ -96,7 +145,9 @@ Run:
 docker run --rm \
   -v /path/to/your/images:/mounted/input \
   -v /path/to/your/output:/mounted/output \
-  skin-tone-batch
+  skin-tone-batch \
+  --match-type match \
+  --image-type live
 ```
 
 Ban chi can thay:
