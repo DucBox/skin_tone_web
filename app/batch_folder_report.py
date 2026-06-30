@@ -139,6 +139,10 @@ def visualization_output_path(output_dir, relative_path):
     return output_dir / "visualizations" / relative_path.with_suffix(".png")
 
 
+def brightness_visualization_output_path(output_dir, relative_path):
+    return output_dir / "visualization_new_brightness" / relative_path.with_suffix(".png")
+
+
 def summary_csv_path(output_dir):
     return output_dir / "tong_hop_ket_qua.csv"
 
@@ -177,6 +181,7 @@ def extract_match_context(relative_path):
 
 
 def build_row(relative_path, analysis_result, visualization_path=None):
+    brightness_visualization_path = analysis_result.get("brightness_visualization_path")
     match_group, subject_id, image_role = extract_match_context(relative_path)
     row = {
         "duong_dan_anh": relative_path.as_posix(),
@@ -192,6 +197,11 @@ def build_row(relative_path, analysis_result, visualization_path=None):
         "nguong_nhom": "",
         "thong_bao": analysis_result["message"],
         "anh_visualization": visualization_path.as_posix() if visualization_path else "",
+        "anh_visualization_new_brightness": (
+            brightness_visualization_path.as_posix()
+            if brightness_visualization_path
+            else ""
+        ),
     }
 
     if analysis_result["ok"] and analysis_result["faces"]:
@@ -231,6 +241,7 @@ def write_summary_csv(rows, output_path):
                 "nguong_nhom",
                 "thong_bao",
                 "anh_visualization",
+                "anh_visualization_new_brightness",
             ],
             delimiter=";",
             lineterminator="\n",
@@ -342,11 +353,20 @@ def run_batch(input_dir, output_dir, mode, match_type, image_type, brightness_sc
                 brightness_scale=brightness_scale,
             )
             vis_path = None
+            brightness_vis_path = None
 
             if analysis_result.get("visualization_image") is not None:
                 vis_path = visualization_output_path(output_dir, relative_path)
                 save_visualization(analysis_result["visualization_image"], vis_path)
 
+            if analysis_result.get("brightness_visualization_image") is not None:
+                brightness_vis_path = brightness_visualization_output_path(output_dir, relative_path)
+                save_visualization(
+                    analysis_result["brightness_visualization_image"],
+                    brightness_vis_path,
+                )
+
+            analysis_result["brightness_visualization_path"] = brightness_vis_path
             rows.append(build_row(relative_path, analysis_result, vis_path))
 
     write_summary_csv(rows, summary_csv_path(output_dir))
@@ -367,6 +387,7 @@ def run_batch(input_dir, output_dir, mode, match_type, image_type, brightness_sc
     print(f"Chart L*: {lstar_chart_path(output_dir)}")
     print(f"Chart pass/fail: {status_chart_path(output_dir)}")
     print(f"Visualization: {output_dir / 'visualizations'}")
+    print(f"Visualization brightness: {output_dir / 'visualization_new_brightness'}")
     print(f"Bo loc: match_type={match_type}, image_type={image_type}")
     print(f"Brightness scale: {brightness_scale:.2f}")
 

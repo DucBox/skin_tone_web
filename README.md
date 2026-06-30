@@ -151,6 +151,7 @@ Trong thu muc output se co:
 - `phan_phoi_gia_tri_lstar.png`
 - `ty_le_pass_fail.png`
 - `visualizations/...`
+- `visualization_new_brightness/...`
 
 ## 3. Chay batch bang Docker
 

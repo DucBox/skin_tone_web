@@ -267,16 +267,19 @@ def _analyze_image_with_results(
             "message": "Không tìm thấy khuôn mặt.",
             "original_image": original_image,
             "visualization_image": original_image.copy(),
+            "brightness_visualization_image": measurement_image.copy(),
             "faces": [],
         }
 
     selected_faces = select_faces(results.multi_face_landmarks, width, height, mode=mode)
     annotated_image = original_image.copy()
+    brightness_annotated_image = measurement_image.copy()
     face_results = []
     image_lab = cv2.cvtColor(measurement_image, cv2.COLOR_BGR2LAB)
 
     for face_index, face_landmarks in enumerate(selected_faces, start=1):
         cheek_regions = draw_cheek_regions(annotated_image, face_landmarks, width, height)
+        draw_cheek_regions(brightness_annotated_image, face_landmarks, width, height)
         left_pixels = extract_lstar_pixels(image_lab, cheek_regions["left_polygon"])
         right_pixels = extract_lstar_pixels(image_lab, cheek_regions["right_polygon"])
         left_lstar = l_channel_mean_to_lstar(left_pixels)
@@ -297,6 +300,7 @@ def _analyze_image_with_results(
 
         if draw_labels:
             draw_result_label(annotated_image, label_lines)
+            draw_result_label(brightness_annotated_image, label_lines)
 
         face_results.append(
             {
@@ -317,6 +321,7 @@ def _analyze_image_with_results(
             "message": "Không tính được L*.",
             "original_image": original_image,
             "visualization_image": annotated_image,
+            "brightness_visualization_image": brightness_annotated_image,
             "faces": [],
         }
 
@@ -325,6 +330,7 @@ def _analyze_image_with_results(
         "message": "Thành công.",
         "original_image": original_image,
         "visualization_image": annotated_image,
+        "brightness_visualization_image": brightness_annotated_image,
         "faces": face_results,
     }
 
