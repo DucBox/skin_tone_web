@@ -258,11 +258,12 @@ def render_lstar_distribution(rows, output_path):
         if row["lstar_cuoi"]
     ]
 
-    plt.figure(figsize=(8, 5))
-    plt.hist(lstar_values, bins=12, range=(0, 100), color="#325b84", edgecolor="white")
+    plt.figure(figsize=(10, 5))
+    plt.hist(lstar_values, bins=20, range=(0, 100), color="#325b84", edgecolor="white")
     plt.title("Phan phoi gia tri L*")
     plt.xlabel("Gia tri L*")
     plt.ylabel("So anh")
+    plt.xticks(range(0, 101, 5))
     plt.grid(axis="y", alpha=0.18)
 
     ensure_parent_dir(output_path)
