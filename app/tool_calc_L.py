@@ -230,23 +230,8 @@ def build_label_lines(left_lstar, right_lstar, final_lstar, skin_tone_group):
     return lines
 
 
-def analyze_image_array(image, mode='largest', draw_labels=True):
-    if image is None:
-        return {
-            "ok": False,
-            "message": "Không đọc được ảnh.",
-        }
-
-    image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+def _analyze_image_with_results(image, results, mode='largest', draw_labels=True):
     height, width, _ = image.shape
-
-    with mp_face_mesh.FaceMesh(
-        static_image_mode=True,
-        max_num_faces=20,
-        refine_landmarks=True,
-        min_detection_confidence=0.5,
-    ) as face_mesh:
-        results = face_mesh.process(image_rgb)
 
     if not results.multi_face_landmarks:
         return {
@@ -316,9 +301,32 @@ def analyze_image_array(image, mode='largest', draw_labels=True):
     }
 
 
-def analyze_image_path(image_path, mode='largest', draw_labels=True):
+def analyze_image_array(image, mode='largest', draw_labels=True, face_mesh=None):
+    if image is None:
+        return {
+            "ok": False,
+            "message": "Không đọc được ảnh.",
+        }
+
+    image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    if face_mesh is not None:
+        results = face_mesh.process(image_rgb)
+        return _analyze_image_with_results(image, results, mode=mode, draw_labels=draw_labels)
+
+    with mp_face_mesh.FaceMesh(
+        static_image_mode=True,
+        max_num_faces=20,
+        refine_landmarks=True,
+        min_detection_confidence=0.5,
+    ) as local_face_mesh:
+        results = local_face_mesh.process(image_rgb)
+
+    return _analyze_image_with_results(image, results, mode=mode, draw_labels=draw_labels)
+
+
+def analyze_image_path(image_path, mode='largest', draw_labels=True, face_mesh=None):
     image = load_image_path(image_path)
-    return analyze_image_array(image, mode=mode, draw_labels=draw_labels)
+    return analyze_image_array(image, mode=mode, draw_labels=draw_labels, face_mesh=face_mesh)
 
 
 def print_analysis_summary(image_name, analysis_result):

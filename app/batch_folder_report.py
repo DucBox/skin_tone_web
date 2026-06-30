@@ -12,9 +12,19 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 
 try:
-    from app.tool_calc_L import SKIN_TONE_GROUPS, SUPPORTED_IMAGE_EXTENSIONS, analyze_image_path
+    from app.tool_calc_L import (
+        SKIN_TONE_GROUPS,
+        SUPPORTED_IMAGE_EXTENSIONS,
+        analyze_image_path,
+        mp_face_mesh,
+    )
 except ModuleNotFoundError:
-    from tool_calc_L import SKIN_TONE_GROUPS, SUPPORTED_IMAGE_EXTENSIONS, analyze_image_path
+    from tool_calc_L import (
+        SKIN_TONE_GROUPS,
+        SUPPORTED_IMAGE_EXTENSIONS,
+        analyze_image_path,
+        mp_face_mesh,
+    )
 
 
 DEFAULT_INPUT_DIR = "/mounted/input"
@@ -266,16 +276,27 @@ def run_batch(input_dir, output_dir, mode, match_type, image_type):
     rows = []
 
     progress_desc = f"Dang xu ly anh ({match_type}/{image_type})"
-    for image_path in tqdm(image_paths, desc=progress_desc, unit="anh"):
-        relative_path = image_path.relative_to(input_dir)
-        analysis_result = analyze_image_path(image_path, mode=mode, draw_labels=True)
-        vis_path = None
+    with mp_face_mesh.FaceMesh(
+        static_image_mode=True,
+        max_num_faces=20,
+        refine_landmarks=True,
+        min_detection_confidence=0.5,
+    ) as face_mesh:
+        for image_path in tqdm(image_paths, desc=progress_desc, unit="anh"):
+            relative_path = image_path.relative_to(input_dir)
+            analysis_result = analyze_image_path(
+                image_path,
+                mode=mode,
+                draw_labels=True,
+                face_mesh=face_mesh,
+            )
+            vis_path = None
 
-        if analysis_result.get("visualization_image") is not None:
-            vis_path = visualization_output_path(output_dir, relative_path)
-            save_visualization(analysis_result["visualization_image"], vis_path)
+            if analysis_result.get("visualization_image") is not None:
+                vis_path = visualization_output_path(output_dir, relative_path)
+                save_visualization(analysis_result["visualization_image"], vis_path)
 
-        rows.append(build_row(relative_path, analysis_result, vis_path))
+            rows.append(build_row(relative_path, analysis_result, vis_path))
 
     write_summary_csv(rows, summary_csv_path(output_dir))
     render_group_distribution(rows, group_chart_path(output_dir))
