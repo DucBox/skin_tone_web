@@ -31,7 +31,8 @@ Web hien ho tro:
 Ghi chu:
 - `brightness scale` chi anh huong den backend tinh `L*`
 - Anh goc va visualization van dung anh goc
-- Production co the an field nay va set co dinh qua env `APP_BRIGHTNESS_SCALE`
+- Hien tai ban Railway dang duoc de o dev phase nen control nay duoc bat san
+- Sau nay neu can an di thi co the dung `APP_TEST_MODE=0`
 
 ### Cach 2: chay web bang Docker
 
