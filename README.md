@@ -21,7 +21,6 @@ http://127.0.0.1:5001
 Web hien ho tro:
 - Tai 1 anh
 - Tai ca folder anh
-- Mo camera trong browser
 - Xem anh goc
 - Xem anh visualization
 - Xem `L*` ma trai, `L*` ma phai, `L*` cuoi, nhom mau da
@@ -31,8 +30,6 @@ Ghi chu:
 - Web hien dang co dinh `brightness scale = 0.85` o backend
 - `brightness scale` chi anh huong den backend tinh `L*`
 - Anh goc va visualization van dung anh goc
-- Hien tai ban Railway dang duoc de o dev phase nen control nay duoc bat san
-- Sau nay neu can an di thi co the dung `APP_TEST_MODE=0`
 
 ### Cach 2: chay web bang Docker
 
@@ -153,6 +150,27 @@ Trong thu muc output se co:
 - `visualizations/...`
 - `visualization_new_brightness/...`
 
+Cau truc visualization hien tai:
+- Luu theo `nhom_mau_da` thay vi theo `id`
+- Anh pass se vao cac folder nhu `nhom_1`, `nhom_2`, `nhom_3`, `nhom_4`, `nhom_5`
+- Anh fail se vao folder `fail`
+- Ben trong van giu them context `match/non-match` va `live/portrait`
+
+Vi du:
+
+```text
+output/
+  visualizations/
+    nhom_3/
+      match/
+        live/
+          10001__live_xxx.png
+    fail/
+      non-match/
+        portrait/
+          10002__portrait_xxx.png
+```
+
 ## 3. Chay batch bang Docker
 
 Phan nay moi la flow Docker danh cho server noi bo. Neu can base image, proxy, pip registry noi bo thi truyen qua `--build-arg`.
@@ -226,8 +244,7 @@ Flow co ban:
 4. Generate Domain de lay link `https`.
 
 Luu y:
-- Camera tren browser can `https` hoac `localhost`.
-- Production dang dung `APP_TEST_MODE=0`.
+- Web duoc public qua Railway va nguoi dung chi can mo link de su dung.
 
 ## 6. Ghi chu nhanh
 

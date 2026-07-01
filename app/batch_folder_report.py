@@ -135,14 +135,6 @@ def ensure_parent_dir(file_path):
     file_path.parent.mkdir(parents=True, exist_ok=True)
 
 
-def visualization_output_path(output_dir, relative_path):
-    return output_dir / "visualizations" / relative_path.with_suffix(".png")
-
-
-def brightness_visualization_output_path(output_dir, relative_path):
-    return output_dir / "visualization_new_brightness" / relative_path.with_suffix(".png")
-
-
 def summary_csv_path(output_dir):
     return output_dir / "tong_hop_ket_qua.csv"
 
@@ -178,6 +170,45 @@ def extract_match_context(relative_path):
             break
 
     return match_group, subject_id, image_role
+
+
+def skin_tone_folder_name(analysis_result):
+    if analysis_result["ok"] and analysis_result["faces"]:
+        group_info = analysis_result["faces"][0]["skin_tone_group"]
+        if group_info:
+            return f"nhom_{group_info['group']}"
+    return "fail"
+
+
+def build_grouped_visualization_relative_path(relative_path, analysis_result):
+    match_group, subject_id, image_role = extract_match_context(relative_path)
+    folder_name = skin_tone_folder_name(analysis_result)
+    file_stem = relative_path.stem
+    file_name = f"{subject_id}__{file_stem}.png" if subject_id else f"{file_stem}.png"
+
+    path_parts = [folder_name]
+    if match_group:
+        path_parts.append(normalize_name(match_group))
+    if image_role:
+        path_parts.append(image_role)
+    path_parts.append(file_name)
+    return Path(*path_parts)
+
+
+def visualization_output_path(output_dir, relative_path, analysis_result):
+    grouped_relative_path = build_grouped_visualization_relative_path(
+        relative_path,
+        analysis_result,
+    )
+    return output_dir / "visualizations" / grouped_relative_path
+
+
+def brightness_visualization_output_path(output_dir, relative_path, analysis_result):
+    grouped_relative_path = build_grouped_visualization_relative_path(
+        relative_path,
+        analysis_result,
+    )
+    return output_dir / "visualization_new_brightness" / grouped_relative_path
 
 
 def build_row(relative_path, analysis_result, visualization_path=None):
@@ -356,11 +387,19 @@ def run_batch(input_dir, output_dir, mode, match_type, image_type, brightness_sc
             brightness_vis_path = None
 
             if analysis_result.get("visualization_image") is not None:
-                vis_path = visualization_output_path(output_dir, relative_path)
+                vis_path = visualization_output_path(
+                    output_dir,
+                    relative_path,
+                    analysis_result,
+                )
                 save_visualization(analysis_result["visualization_image"], vis_path)
 
             if analysis_result.get("brightness_visualization_image") is not None:
-                brightness_vis_path = brightness_visualization_output_path(output_dir, relative_path)
+                brightness_vis_path = brightness_visualization_output_path(
+                    output_dir,
+                    relative_path,
+                    analysis_result,
+                )
                 save_visualization(
                     analysis_result["brightness_visualization_image"],
                     brightness_vis_path,

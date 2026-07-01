@@ -138,20 +138,6 @@
       color: var(--ink);
     }
 
-    video,
-    canvas {
-      width: 100%;
-      border-radius: 18px;
-      background: #ddd7ce;
-      object-fit: cover;
-    }
-
-    .camera-shell {
-      display: grid;
-      gap: 10px;
-      margin-top: 10px;
-    }
-
     .button-row {
       display: flex;
       gap: 10px;
@@ -556,23 +542,6 @@
             <input id="single_image" type="file" name="single_image" accept="image/*">
           </div>
 
-          {% if test_mode %}
-            <div class="field">
-              <label>Chụp bằng camera</label>
-              <div class="camera-shell">
-                <video id="camera-preview" playsinline autoplay muted></video>
-                <canvas id="camera-canvas" hidden></canvas>
-              </div>
-              <input type="hidden" id="camera_image" name="camera_image">
-              <div class="button-row" style="margin-top:10px;">
-                <button class="secondary" type="button" id="start-camera">Mở camera</button>
-                <button class="secondary" type="button" id="capture-camera">Chụp</button>
-                <button class="secondary" type="button" id="clear-camera">Xóa</button>
-              </div>
-            </div>
-
-          {% endif %}
-
           <div class="field">
             <label for="folder_files">Upload folder ảnh</label>
             <input id="folder_files" type="file" name="folder_files" accept="image/*" webkitdirectory directory multiple>
@@ -704,7 +673,7 @@
       <div class="modal-head">
         <div>
           <h3>Nhóm màu da tham khảo</h3>
-          <p>Đối chiếu theo L* trung bình của má trái và má phải.</p>
+          <p>Đối chiếu theo L* cuối cùng của 2 vùng má.</p>
         </div>
         <button class="ghost-button" type="button" id="close-group-guide">Đóng</button>
       </div>
@@ -753,7 +722,7 @@
       </table>
 
       <div class="modal-note">
-        Kết quả cuối = trung bình L* má trái và L* má phải.
+        L* cuối cùng được tính trên toàn bộ điểm ảnh thuộc 2 vùng má.
       </div>
     </div>
   </div>
@@ -858,69 +827,5 @@
       showLoading();
     });
   </script>
-
-  {% if test_mode %}
-    <script>
-      const startCameraButton = document.getElementById("start-camera");
-      const captureButton = document.getElementById("capture-camera");
-      const clearButton = document.getElementById("clear-camera");
-      const video = document.getElementById("camera-preview");
-      const canvas = document.getElementById("camera-canvas");
-      const hiddenInput = document.getElementById("camera_image");
-      const fileInput = document.getElementById("single_image");
-      let mediaStream = null;
-
-      async function startCamera() {
-        if (mediaStream) return;
-        try {
-          mediaStream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: "user" },
-            audio: false
-          });
-          video.srcObject = mediaStream;
-        } catch (error) {
-          window.alert("Không mở được camera.");
-        }
-      }
-
-      function captureFrame() {
-        if (!mediaStream) {
-          window.alert("Hãy mở camera trước.");
-          return;
-        }
-        const width = video.videoWidth;
-        const height = video.videoHeight;
-        if (!width || !height) {
-          window.alert("Camera chưa sẵn sàng.");
-          return;
-        }
-        canvas.width = width;
-        canvas.height = height;
-        const context = canvas.getContext("2d");
-        context.drawImage(video, 0, 0, width, height);
-        hiddenInput.value = canvas.toDataURL("image/jpeg", 0.95);
-        canvas.hidden = false;
-        fileInput.value = "";
-      }
-
-      function clearCapture() {
-        hiddenInput.value = "";
-        canvas.hidden = true;
-        const context = canvas.getContext("2d");
-        if (context) {
-          context.clearRect(0, 0, canvas.width, canvas.height);
-        }
-      }
-
-      startCameraButton?.addEventListener("click", startCamera);
-      captureButton?.addEventListener("click", captureFrame);
-      clearButton?.addEventListener("click", clearCapture);
-      fileInput?.addEventListener("change", () => {
-        if (fileInput.files.length > 0) {
-          clearCapture();
-        }
-      });
-    </script>
-  {% endif %}
 </body>
 </html>

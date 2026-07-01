@@ -5,7 +5,6 @@ import os
 from pathlib import Path
 
 import cv2
-import numpy as np
 from flask import Flask, render_template, request
 
 try:
@@ -25,16 +24,6 @@ except ModuleNotFoundError:
 
 
 app = Flask(__name__, template_folder="templates")
-
-
-def env_flag(name, default=False):
-    value = os.environ.get(name)
-    if value is None:
-        return default
-    return value.strip().lower() in {"1", "true", "yes", "on"}
-
-
-TEST_MODE = env_flag("APP_TEST_MODE", default=True)
 DEFAULT_BRIGHTNESS_SCALE = normalize_brightness_scale(0.85)
 
 
@@ -47,19 +36,6 @@ def decode_uploaded_file(file_storage):
         return None
 
     return decode_image_bytes(file_bytes)
-
-
-def decode_camera_data(data_url):
-    if not data_url or "," not in data_url:
-        return None
-
-    _, encoded = data_url.split(",", 1)
-    image_bytes = base64.b64decode(encoded)
-    image_array = np.frombuffer(image_bytes, dtype=np.uint8)
-    if image_array.size == 0:
-        return None
-
-    return cv2.imdecode(image_array, cv2.IMREAD_COLOR)
 
 
 def encode_image_data_url(image_bgr):
@@ -179,16 +155,6 @@ def analyze_files(file_storages, brightness_scale):
     return results
 
 
-def analyze_single_image(image, display_path, brightness_scale):
-    analysis_result = analyze_image_array(
-        image,
-        mode="largest",
-        draw_labels=True,
-        brightness_scale=brightness_scale,
-    )
-    return [build_item_result(display_path, analysis_result)]
-
-
 @app.route("/", methods=["GET", "POST"])
 def index():
     analyzed_items = []
@@ -198,18 +164,9 @@ def index():
     if request.method == "POST":
         single_image = request.files.get("single_image")
         folder_files = request.files.getlist("folder_files")
-        camera_image = request.form.get("camera_image", "").strip()
 
         if single_image and single_image.filename:
             analyzed_items = analyze_files([single_image], brightness_scale)
-        elif camera_image:
-            image = decode_camera_data(camera_image)
-            if image is not None:
-                analyzed_items = analyze_single_image(
-                    image,
-                    "camera_capture.jpg",
-                    brightness_scale,
-                )
         elif folder_files:
             analyzed_items = analyze_files(folder_files, brightness_scale)
 
@@ -232,7 +189,6 @@ def index():
         total_count=total_count,
         success_count=success_count,
         csv_export_url=csv_export_url,
-        test_mode=TEST_MODE,
     )
 
 
