@@ -1,0 +1,43 @@
+<dialog id="photo-preview" class="photo-preview" aria-labelledby="photo-preview-name">
+  <div class="preview-toolbar">
+    <span id="photo-preview-name">Ảnh gốc</span>
+    <button type="button" id="close-photo-preview" class="secondary" aria-label="Đóng preview ảnh">Đóng ×</button>
+  </div>
+  <div class="preview-canvas"><img id="photo-preview-image" alt="Ảnh gốc"></div>
+</dialog>
+<script>
+  (() => {
+    const dialog = document.getElementById('photo-preview');
+    const image = document.getElementById('photo-preview-image');
+    const name = document.getElementById('photo-preview-name');
+    function openPhoto(src, title) {
+      if (!src) return;
+      image.src = src;
+      image.alt = title || 'Ảnh gốc';
+      name.textContent = title || 'Ảnh gốc';
+      dialog.showModal();
+    }
+    document.querySelectorAll('[data-photo-src]').forEach(button => {
+      button.addEventListener('click', () => openPhoto(button.dataset.photoSrc, button.dataset.photoName));
+    });
+    const original = document.getElementById('original-image');
+    if (original) {
+      original.setAttribute('tabindex', '0');
+      original.setAttribute('role', 'button');
+      original.setAttribute('aria-label', 'Xem preview ảnh gốc');
+      const openOriginal = () => openPhoto(original.getAttribute('src'), document.getElementById('detail-path')?.textContent);
+      original.addEventListener('click', openOriginal);
+      original.addEventListener('keydown', event => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          openOriginal();
+        }
+      });
+    }
+    document.getElementById('close-photo-preview').addEventListener('click', () => dialog.close());
+    dialog.addEventListener('click', event => {
+      if (event.target === dialog) dialog.close();
+    });
+    dialog.addEventListener('close', () => image.removeAttribute('src'));
+  })();
+</script>

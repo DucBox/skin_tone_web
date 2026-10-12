@@ -22,3 +22,4 @@ env/
 .ruff_cache/
 .coverage
 htmlcov/
+/history_data/

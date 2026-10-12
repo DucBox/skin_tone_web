@@ -2,6 +2,52 @@
 
 Tool phan nhom mau da tu anh chan dung, dua tren gia tri `L*` o 2 vung ma.
 
+## Lịch sử chấm và xuất Excel
+
+- Sidebar có mục **Lịch sử chấm**, giữ kết quả của các lần upload.
+- Bảng lịch sử gồm 4 cột: ảnh gốc, điểm L*, khoảng L*, kết quả nhóm màu da.
+- **Xuất Excel có ảnh** xuất toàn bộ lịch sử; ảnh được nhúng trong file, không cần mạng để xem.
+- **Xoá kết quả** xoá riêng dòng đó và các ảnh đi kèm, sau khi xác nhận trên web.
+- Lịch sử hiện dùng chung cho người truy cập web; mỗi lần upload tạo một kết quả mới, chưa chống trùng ứng viên.
+- Kết quả không tìm được khuôn mặt cũng được lưu, với trạng thái không chấm được.
+- Kết quả từ các lần upload trước khi có tính năng này không thể phục hồi tự động.
+
+### Railway Bucket
+
+Thiết lập 5 biến trong service web, tham chiếu tới Bucket đã tạo:
+
+```text
+S3_BUCKET_NAME=${{skin-tone-images.BUCKET}}
+S3_ENDPOINT_URL=${{skin-tone-images.ENDPOINT}}
+S3_ACCESS_KEY_ID=${{skin-tone-images.ACCESS_KEY_ID}}
+S3_SECRET_ACCESS_KEY=${{skin-tone-images.SECRET_ACCESS_KEY}}
+S3_REGION=${{skin-tone-images.REGION}}
+```
+
+App lưu nguyên byte ảnh gốc, visualization và từng kết quả JSON trong
+`skin-tone/history/` trên Bucket. Không cần database riêng hoặc Volume.
+Ảnh gốc không bị nén/resize; kích thước hiển thị chỉ thay đổi bằng CSS.
+Bấm ảnh ở trang chấm hoặc lịch sử mở preview ngay trên web.
+JPEG/PNG được nhúng nguyên dữ liệu gốc vào Excel nếu không cần xoay theo EXIF.
+HEIC/HEIF được hiển thị bằng PNG không mất dữ liệu, giữ nguyên độ phân giải;
+file nguồn lưu trên Bucket vẫn giữ nguyên.
+Bucket mới dùng URL kiểu virtual-hosted mặc định; với Bucket cũ yêu cầu path-style,
+thêm `S3_URL_STYLE=path` theo tab Credentials.
+
+Có thể đặt `SECRET_KEY` ổn định trong Railway Variables để phiên xác nhận thao tác
+không hết hạn khi restart/deploy. Khi chưa đặt, app tự tạo khoá ngẫu nhiên;
+sau restart cần tải lại trang trước khi upload hoặc xoá.
+
+Nếu cấu hình Bucket thiếu hoặc không truy cập được, app báo kết quả chưa lưu;
+không tự lưu sang ổ tạm Railway. Chạy local không cấu hình S3 sẽ lưu vào
+`history_data/` (đã loại khỏi Git), hoặc thư mục đặt qua `HISTORY_DIR`.
+
+Kiểm tra chức năng:
+
+```bash
+python3 -m unittest discover -s tests -v
+```
+
 ## 1. Chay web local
 
 ### Cach 1: chay bang Python

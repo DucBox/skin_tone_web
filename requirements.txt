@@ -7,3 +7,5 @@ opencv-python-headless==4.13.0.92
 pillow-heif
 tqdm==4.67.3
 Werkzeug==2.2.3
+boto3>=1.34,<2
+openpyxl==3.1.5

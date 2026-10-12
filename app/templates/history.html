@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lịch sử chấm màu da</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+</head>
+<body>
+  <main class="page">
+    <header class="hero">
+      <div class="eyebrow">Công cụ chấm màu da</div>
+      <h1>Lịch sử chấm</h1>
+      <p>Xem lại kết quả từ các lần tải ảnh và xuất Excel có ảnh gốc.</p>
+    </header>
+    <div class="workspace">
+      <aside class="panel sidebar">
+        {% include "navigation.html" %}
+        <h2 class="section-title">Kết quả đã lưu</h2>
+        <div class="mini-stat"><span class="label">Tổng số ảnh</span><span class="value">{{ total }}</span></div>
+        {% if total and not error %}
+        <a class="primary action-link export-link" href="{{ url_for('export_history') }}">Xuất Excel có ảnh</a>
+        <p class="export-note">Xuất toàn bộ lịch sử, gồm cả ảnh gốc trong từng dòng.</p>
+        {% endif %}
+      </aside>
+      <section class="panel results" aria-label="Bảng lịch sử">
+        {% if error %}<div class="error" role="alert">{{ error }}</div>{% endif %}
+        {% if items %}
+        <div class="results-head"><h2 class="section-title">Ảnh đã chấm</h2><span class="muted">Mới nhất trước</span></div>
+        <div class="table-scroll">
+          <table class="assessment-table">
+            <thead><tr><th scope="col">Ảnh gốc</th><th scope="col">Điểm chấm (L*)</th><th scope="col">Khoảng L*</th><th scope="col">Kết quả màu da</th></tr></thead>
+            <tbody>
+              {% for item in items %}
+              <tr>
+                <td>
+                  <button class="photo-preview-button" type="button" data-photo-src="{{ url_for('history_image', record_id=item.id, kind='preview') }}" data-photo-name="{{ item.file_name }}" title="Xem ảnh gốc" aria-label="Xem ảnh gốc {{ item.file_name }}">
+                    <img class="history-photo" src="{{ url_for('history_image', record_id=item.id, kind='preview') }}" alt="Ảnh {{ item.file_name }}" loading="lazy">
+                  </button>
+                  <div class="photo-name">{{ item.file_name }}</div>
+                </td>
+                <td class="score">{{ '%.2f'|format(item.average_lstar) if item.average_lstar is not none else '—' }}</td>
+                <td>{{ item.skin_tone_range or '—' }}</td>
+                <td>
+                  {% if item.ok %}<span class="badge ok">Nhóm {{ item.skin_tone_group }}</span><div class="tone-label">{{ item.skin_tone_label }}</div>
+                  {% else %}<span class="badge fail">Không chấm được</span><div class="tone-label">{{ item.message }}</div>{% endif %}
+                  <form class="delete-form" method="post" action="{{ url_for('delete_history', record_id=item.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <input type="hidden" name="page" value="{{ page }}">
+                    <button class="delete-button" type="submit" aria-label="Xoá kết quả {{ item.file_name }}">Xoá kết quả</button>
+                  </form>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <nav class="pagination" aria-label="Trang lịch sử">
+          {% if page > 1 %}<a class="secondary action-link" href="{{ url_for('history', page=page-1) }}">← Trang trước</a>{% endif %}
+          <span>Trang {{ page }} / {{ page_count }}</span>
+          {% if page < page_count %}<a class="secondary action-link" href="{{ url_for('history', page=page+1) }}">Trang sau →</a>{% endif %}
+        </nav>
+        {% elif not error %}
+        <div class="placeholder"><div><h2>Chưa có lịch sử</h2><p>Tải ảnh và chấm để lưu kết quả tại đây.</p><a class="primary action-link" href="{{ url_for('index') }}">Chấm ảnh đầu tiên</a></div></div>
+        {% endif %}
+      </section>
+    </div>
+  </main>
+  {% include "photo_preview.html" %}
+  <script>
+    document.querySelectorAll('.delete-form').forEach(form => {
+      form.addEventListener('submit', event => {
+        if (!window.confirm('Xoá kết quả và ảnh đi kèm khỏi lịch sử?')) {
+          event.preventDefault();
+          return;
+        }
+        const button = form.querySelector('button');
+        button.disabled = true;
+        button.textContent = 'Đang xoá…';
+      });
+    });
+  </script>
+</body>
+</html>
