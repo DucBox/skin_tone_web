@@ -38,6 +38,9 @@
     .delete-button { color: var(--danger); background: rgba(159, 59, 40, .08); padding: 8px 12px; font-size: 13px; border-radius: 8px; }
     .delete-button:disabled { opacity: .5; cursor: wait; }
     .pagination { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; justify-content: center; margin-top: 24px; font-size: 14px; }
+    .page-size-form { margin-top: 20px; }
+    .page-size-form label { display: block; margin-bottom: 8px; font-size: 14px; font-weight: 600; }
+    .page-size-form select { width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: white; color: var(--ink); font: inherit; }
     :focus-visible { outline: 3px solid var(--accent-2); outline-offset: 3px; }
     .photo-preview-button { display: block; padding: 0; background: transparent; border-radius: 12px; cursor: zoom-in; }
     #original-image { cursor: zoom-in; }

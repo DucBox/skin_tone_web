@@ -131,3 +131,14 @@ class HistoryStore:
         return self.client.generate_presigned_url(
             "get_object", Params={"Bucket": self.bucket, "Key": self.key(record_id, name)},
             ExpiresIn=900)
+
+    def delete_all(self):
+        # Snapshot IDs so uploads arriving during deletion are preserved.
+        record_ids = self.ids()
+        assets = [self.key(record_id, name) for record_id in record_ids
+                  for name in ("original", "preview.jpg", "visualization.jpg")]
+        for start in range(0, len(assets), 1000):
+            self.remove_keys(assets[start:start + 1000])
+        records = [self.key(record_id) for record_id in record_ids]
+        for start in range(0, len(records), 1000):
+            self.remove_keys(records[start:start + 1000])

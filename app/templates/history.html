@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
 </head>
 <body>
+  {% set selected_size = per_page|default('20') %}
   <main class="page">
     <header class="hero">
       <div class="eyebrow">Công cụ chấm màu da</div>
@@ -18,9 +19,22 @@
         {% include "navigation.html" %}
         <h2 class="section-title">Kết quả đã lưu</h2>
         <div class="mini-stat"><span class="label">Tổng số ảnh</span><span class="value">{{ total }}</span></div>
+        <form class="page-size-form" method="get" action="{{ url_for('history') }}">
+          <label for="per-page">Số ảnh mỗi trang</label>
+          <select id="per-page" name="per_page" onchange="this.form.requestSubmit()">
+            {% for value, label in [('10', '10 ảnh'), ('20', '20 ảnh'), ('50', '50 ảnh'), ('100', '100 ảnh'), ('all', 'Tất cả')] %}
+            <option value="{{ value }}" {% if selected_size == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+          <noscript><button class="secondary" type="submit">Áp dụng</button></noscript>
+        </form>
         {% if total and not error %}
         <a class="primary action-link export-link" href="{{ url_for('export_history') }}">Xuất Excel có ảnh</a>
         <p class="export-note">Xuất toàn bộ lịch sử, gồm cả ảnh gốc trong từng dòng.</p>
+        <form class="delete-all-form" method="post" action="{{ url_for('delete_all_history') }}" data-total="{{ total }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <button class="delete-button" type="submit">Xoá tất cả lịch sử</button>
+        </form>
         {% endif %}
       </aside>
       <section class="panel results" aria-label="Bảng lịch sử">
@@ -47,6 +61,7 @@
                   <form class="delete-form" method="post" action="{{ url_for('delete_history', record_id=item.id) }}">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <input type="hidden" name="page" value="{{ page }}">
+                    <input type="hidden" name="per_page" value="{{ selected_size }}">
                     <button class="delete-button" type="submit" aria-label="Xoá kết quả {{ item.file_name }}">Xoá kết quả</button>
                   </form>
                 </td>
@@ -56,9 +71,9 @@
           </table>
         </div>
         <nav class="pagination" aria-label="Trang lịch sử">
-          {% if page > 1 %}<a class="secondary action-link" href="{{ url_for('history', page=page-1) }}">← Trang trước</a>{% endif %}
+          {% if page > 1 %}<a class="secondary action-link" href="{{ url_for('history', page=page-1, per_page=selected_size) }}">← Trang trước</a>{% endif %}
           <span>Trang {{ page }} / {{ page_count }}</span>
-          {% if page < page_count %}<a class="secondary action-link" href="{{ url_for('history', page=page+1) }}">Trang sau →</a>{% endif %}
+          {% if page < page_count %}<a class="secondary action-link" href="{{ url_for('history', page=page+1, per_page=selected_size) }}">Trang sau →</a>{% endif %}
         </nav>
         {% elif not error %}
         <div class="placeholder"><div><h2>Chưa có lịch sử</h2><p>Tải ảnh và chấm để lưu kết quả tại đây.</p><a class="primary action-link" href="{{ url_for('index') }}">Chấm ảnh đầu tiên</a></div></div>
@@ -68,6 +83,16 @@
   </main>
   {% include "photo_preview.html" %}
   <script>
+    document.querySelector('.delete-all-form')?.addEventListener('submit', event => {
+      const form = event.currentTarget;
+      if (!window.confirm(`Xoá toàn bộ ${form.dataset.total} kết quả ở tất cả các trang và ảnh đi kèm? Không thể hoàn tác.`)) {
+        event.preventDefault();
+        return;
+      }
+      const button = form.querySelector('button');
+      button.disabled = true;
+      button.textContent = 'Đang xoá tất cả…';
+    });
     document.querySelectorAll('.delete-form').forEach(form => {
       form.addEventListener('submit', event => {
         if (!window.confirm('Xoá kết quả và ảnh đi kèm khỏi lịch sử?')) {

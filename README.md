@@ -8,6 +8,8 @@ Tool phan nhom mau da tu anh chan dung, dua tren gia tri `L*` o 2 vung ma.
 - Bảng lịch sử gồm 4 cột: ảnh gốc, điểm L*, khoảng L*, kết quả nhóm màu da.
 - **Xuất Excel có ảnh** xuất toàn bộ lịch sử; ảnh được nhúng trong file, không cần mạng để xem.
 - **Xoá kết quả** xoá riêng dòng đó và các ảnh đi kèm, sau khi xác nhận trên web.
+- **Xoá tất cả lịch sử** xoá các kết quả trên toàn bộ các trang và ảnh đi kèm, có xác nhận.
+- Chọn hiển thị **10 / 20 / 50 / 100 / tất cả** ảnh mỗi trang; mặc định 20 và nhớ lựa chọn trong phiên.
 - Lịch sử hiện dùng chung cho người truy cập web; mỗi lần upload tạo một kết quả mới, chưa chống trùng ứng viên.
 - Kết quả không tìm được khuôn mặt cũng được lưu, với trạng thái không chấm được.
 - Kết quả từ các lần upload trước khi có tính năng này không thể phục hồi tự động.

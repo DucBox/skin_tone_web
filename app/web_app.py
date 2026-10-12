@@ -267,13 +267,24 @@ def index():
 def history():
     error = None
     items, total, page = [], 0, max(1, request.args.get("page", 1, type=int))
-    page_size = 20
+    per_page = request.args.get("per_page", session.get("history_per_page", "20"))
+    if per_page not in ("10", "20", "50", "100", "all"):
+        per_page = "20"
+    session["history_per_page"] = per_page
+    page_count = 1
     try:
         store = history_store()
         ids = store.ids()
         total = len(ids)
-        page = min(page, max(1, (total + page_size - 1) // page_size))
-        for record_id in ids[(page - 1) * page_size:page * page_size]:
+        if per_page == "all":
+            page = 1
+            selected_ids = ids
+        else:
+            page_size = int(per_page)
+            page_count = max(1, (total + page_size - 1) // page_size)
+            page = min(page, page_count)
+            selected_ids = ids[(page - 1) * page_size:page * page_size]
+        for record_id in selected_ids:
             try:
                 items.append(store.get(record_id))
             except FileNotFoundError:
@@ -282,7 +293,7 @@ def history():
         app.logger.exception("Unable to read history")
         error = "Không tải được lịch sử. Vui lòng thử lại hoặc kiểm tra cấu hình lưu trữ."
     return render_template("history.html", items=items, total=total, page=page,
-                           page_count=max(1, (total + page_size - 1) // page_size), error=error)
+                           page_count=page_count, per_page=per_page, error=error)
 
 
 @app.route("/history/<record_id>/image/<kind>")
@@ -333,7 +344,10 @@ def delete_history(record_id):
         app.logger.exception("Unable to delete history")
         return render_template("history.html", items=[], total=0, page=1, page_count=1,
                                error="Chưa xoá được đầy đủ kết quả. Vui lòng tải lại lịch sử và thử lại."), 503
-    return redirect(url_for("history", page=max(1, request.form.get("page", 1, type=int))))
+    per_page = request.form.get("per_page", session.get("history_per_page", "20"))
+    if per_page not in ("10", "20", "50", "100", "all"):
+        per_page = "20"
+    return redirect(url_for("history", page=max(1, request.form.get("page", 1, type=int)), per_page=per_page))
 
 
 @app.route("/history/export.xlsx")
@@ -405,6 +419,17 @@ def export_history():
     finally:
         if "scratch" in locals():
             scratch.cleanup()
+
+
+@app.route("/history/delete-all", methods=["POST"])
+def delete_all_history():
+    try:
+        history_store().delete_all()
+    except Exception:
+        app.logger.exception("Unable to delete all history")
+        return render_template("history.html", items=[], total=0, page=1, page_count=1,
+                               error="Chưa xoá được toàn bộ lịch sử. Vui lòng tải lại trang và thử lại."), 503
+    return redirect(url_for("history"))
 
 
 if __name__ == "__main__":

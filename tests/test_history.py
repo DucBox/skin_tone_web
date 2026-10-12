@@ -107,11 +107,37 @@ class HistoryTests(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 HistoryStore()
 
+    def test_delete_all_requires_csrf_and_preserves_new_uploads(self):
+        for i in range(3):
+            self.upload(f"old-{i}.png")
+        store = web_app.history_store()
+        old_ids = store.ids()
+        self.assertEqual(self.client.post("/history/delete-all").status_code, 400)
+        self.upload("new.png")
+        new_id = store.ids()[0]
+        with patch.object(store, "ids", return_value=old_ids):
+            response = self.client.post("/history/delete-all", data={"csrf_token": self.token})
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(store.ids(), [new_id])
+        response = self.client.post("/history/delete-all", data={"csrf_token": self.token}, follow_redirects=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(store.ids(), [])
+        self.assertEqual(list((store.root / store.PREFIX).glob("*/*")), [])
+
     def test_pagination_and_invalid_id(self):
         for i in range(21):
             self.upload(f"photo-{i}.png")
         self.assertEqual(self.client.get("/history").get_data(as_text=True).count('class="history-photo"'), 20)
         self.assertEqual(self.client.get("/history?page=2").get_data(as_text=True).count('class="history-photo"'), 1)
+        for size, expected in (("10", 10), ("20", 20), ("50", 21), ("100", 21), ("all", 21)):
+            html = self.client.get(f"/history?per_page={size}").get_data(as_text=True)
+            self.assertEqual(html.count('class="history-photo"'), expected)
+            self.assertIn(f'value="{size}" selected', html)
+        self.assertEqual(self.client.get("/history").get_data(as_text=True).count('class="history-photo"'), 21)
+        html = self.client.get("/history?per_page=10&page=2").get_data(as_text=True)
+        self.assertIn("per_page=10", html)
+        self.assertEqual(html.count('class="history-photo"'), 10)
+        self.assertEqual(self.client.get("/history?per_page=invalid").get_data(as_text=True).count('class="history-photo"'), 20)
         self.assertEqual(self.client.get("/history/not-an-id/image/preview").status_code, 404)
 
     def test_s3_upload_list_read_and_delete_contract(self):
