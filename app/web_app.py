@@ -33,7 +33,7 @@ except ModuleNotFoundError:
 app = Flask(__name__, template_folder="templates")
 app.secret_key = os.environ.get("SECRET_KEY") or secrets.token_hex(32)
 app.config.update(SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE="Lax")
-DEFAULT_BRIGHTNESS_SCALE = normalize_brightness_scale(0.85)
+DEFAULT_BRIGHTNESS_SCALE = normalize_brightness_scale(0.92)
 
 
 @lru_cache(maxsize=1)
