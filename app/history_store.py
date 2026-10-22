@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 
 class HistoryStore:
     PREFIX = "skin-tone/history/"
+    OWNER_PREFIX = "skin-tone/owners/"
 
     def __init__(self):
         names = ("S3_BUCKET_NAME", "S3_ENDPOINT_URL", "S3_ACCESS_KEY_ID",
@@ -40,8 +41,17 @@ class HistoryStore:
             raise ValueError("Invalid history ID")
         return record_id
 
+    @staticmethod
+    def validate_owner(owner):
+        if not re.fullmatch(r"[a-f0-9]{32}", owner or ""):
+            raise ValueError("Invalid owner ID")
+        return owner
+
     def key(self, record_id, name="record.json"):
         return f"{self.PREFIX}{self.validate_id(record_id)}/{name}"
+
+    def owner_key(self, owner, record_id):
+        return f"{self.OWNER_PREFIX}{self.validate_owner(owner)}/{self.validate_id(record_id)}"
 
     def put(self, key, data, content_type):
         if self.client:
@@ -76,7 +86,7 @@ class HistoryStore:
             for key in keys:
                 (self.root / key).unlink(missing_ok=True)
 
-    def save(self, item, original_bytes, original_type, preview_bytes, visualization_bytes):
+    def save(self, item, original_bytes, original_type, preview_bytes, visualization_bytes, owner=None):
         now = datetime.now(timezone.utc)
         record_id = now.strftime("%Y%m%dT%H%M%S%fZ") + "-" + uuid4().hex
         record = {key: value for key, value in item.items()
@@ -88,6 +98,8 @@ class HistoryStore:
         if visualization_bytes:
             assets.append(("visualization.jpg", visualization_bytes, "image/jpeg"))
         record["has_visualization"] = bool(visualization_bytes)
+        if owner:
+            record["owner"] = self.validate_owner(owner)
         attempted = []
         try:
             for name, data, content_type in assets:
@@ -98,6 +110,11 @@ class HistoryStore:
             key = self.key(record_id)
             attempted.append(key)
             self.put(key, json.dumps(record, ensure_ascii=False).encode("utf-8"), "application/json")
+            if owner:
+                # Per-owner index lets visitors list only their own records cheaply.
+                marker = self.owner_key(owner, record_id)
+                attempted.append(marker)
+                self.put(marker, b"", "application/octet-stream")
         except Exception:
             try:
                 self.remove_keys(attempted)
@@ -106,7 +123,16 @@ class HistoryStore:
             raise
         return record
 
-    def ids(self):
+    def ids(self, owner=None):
+        if owner:
+            prefix = f"{self.OWNER_PREFIX}{self.validate_owner(owner)}/"
+            if self.client:
+                keys = [entry["Key"] for page in self.client.get_paginator("list_objects_v2").paginate(
+                    Bucket=self.bucket, Prefix=prefix) for entry in page.get("Contents", [])]
+            else:
+                keys = [p.relative_to(self.root).as_posix()
+                        for p in (self.root / prefix).glob("*") if p.is_file()]
+            return sorted((key.rsplit("/", 1)[-1] for key in keys), reverse=True)
         if self.client:
             keys = (entry["Key"] for page in self.client.get_paginator("list_objects_v2").paginate(
                 Bucket=self.bucket, Prefix=self.PREFIX) for entry in page.get("Contents", []))
@@ -126,6 +152,8 @@ class HistoryStore:
         self.remove_keys([self.key(record_id, name) for name in names])
         # Keep the record available for retry if removing any image fails.
         self.remove_keys([self.key(record_id)])
+        if record.get("owner"):
+            self.remove_keys([self.owner_key(record["owner"], record_id)])
 
     def signed_url(self, record_id, name):
         return self.client.generate_presigned_url(
@@ -142,3 +170,13 @@ class HistoryStore:
         records = [self.key(record_id) for record_id in record_ids]
         for start in range(0, len(records), 1000):
             self.remove_keys(records[start:start + 1000])
+        deleted = set(record_ids)
+        if self.client:
+            markers = [entry["Key"] for page in self.client.get_paginator("list_objects_v2").paginate(
+                Bucket=self.bucket, Prefix=self.OWNER_PREFIX) for entry in page.get("Contents", [])]
+        else:
+            markers = [p.relative_to(self.root).as_posix()
+                       for p in (self.root / self.OWNER_PREFIX).glob("*/*") if p.is_file()]
+        markers = [key for key in markers if key.rsplit("/", 1)[-1] in deleted]
+        for start in range(0, len(markers), 1000):
+            self.remove_keys(markers[start:start + 1000])

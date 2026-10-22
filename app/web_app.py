@@ -5,8 +5,11 @@ import os
 import secrets
 import mimetypes
 import tempfile
-from functools import lru_cache
+import time
+from datetime import timedelta
+from functools import lru_cache, wraps
 from pathlib import Path
+from uuid import uuid4
 
 import cv2
 from flask import Flask, render_template, request, redirect, url_for, send_file, session, abort
@@ -32,7 +35,13 @@ except ModuleNotFoundError:
 
 app = Flask(__name__, template_folder="templates")
 app.secret_key = os.environ.get("SECRET_KEY") or secrets.token_hex(32)
-app.config.update(SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE="Lax")
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE="Lax",
+    SESSION_COOKIE_SECURE=os.environ.get("SESSION_COOKIE_SECURE") == "1",
+    PERMANENT_SESSION_LIFETIME=timedelta(days=365),
+)
+ADMIN_SESSION_SECONDS = 30 * 24 * 3600
 DEFAULT_BRIGHTNESS_SCALE = normalize_brightness_scale(0.92)
 
 
@@ -46,6 +55,41 @@ def csrf_context():
     if "csrf_token" not in session:
         session["csrf_token"] = secrets.token_urlsafe(32)
     return {"csrf_token": session["csrf_token"]}
+
+
+def is_admin():
+    return time.time() - session.get("admin_at", 0) < ADMIN_SESSION_SECONDS
+
+
+def owner_id():
+    """Anonymous per-browser ID; visitors only see records saved under it."""
+    if "owner" not in session:
+        session["owner"] = uuid4().hex
+    session.permanent = True
+    return session["owner"]
+
+
+def can_access(record):
+    owner = record.get("owner")
+    return is_admin() or bool(owner and secrets.compare_digest(owner, session.get("owner", "")))
+
+
+def admin_required(view):
+    @wraps(view)
+    def wrapper(*args, **kwargs):
+        if not is_admin():
+            return redirect(url_for("admin_login"))
+        return view(*args, **kwargs)
+    return wrapper
+
+
+def same_text(supplied, expected):
+    return secrets.compare_digest(supplied.encode("utf-8"), expected.encode("utf-8"))
+
+
+@app.context_processor
+def admin_context():
+    return {"is_admin": is_admin()}
 
 
 @app.before_request
@@ -210,6 +254,7 @@ def analyze_files(file_storages, brightness_scale):
                 original_type,
                 None,
                 jpeg_bytes(analysis_result.get("visualization_image"), max_size=1600),
+                owner=owner_id(),
             )
             item["saved"] = True
             item["history_id"] = record["id"]
@@ -274,7 +319,7 @@ def history():
     page_count = 1
     try:
         store = history_store()
-        ids = store.ids()
+        ids = store.ids(None if is_admin() else owner_id())
         total = len(ids)
         if per_page == "all":
             page = 1
@@ -304,6 +349,8 @@ def history_image(record_id, kind):
     try:
         store = history_store()
         record = store.get(record_id)
+        if not can_access(record):
+            abort(404)
         if kind == "visualization" and not record["has_visualization"]:
             abort(404)
         if kind == "preview" and Path(record["file_name"]).suffix.lower() in (".heic", ".heif"):
@@ -333,6 +380,7 @@ def history_image(record_id, kind):
 
 
 @app.route("/history/<record_id>/delete", methods=["POST"])
+@admin_required
 def delete_history(record_id):
     try:
         history_store().delete(record_id)
@@ -351,6 +399,7 @@ def delete_history(record_id):
 
 
 @app.route("/history/export.xlsx")
+@admin_required
 def export_history():
     from openpyxl import Workbook
     from openpyxl.drawing.image import Image as ExcelImage
@@ -422,6 +471,7 @@ def export_history():
 
 
 @app.route("/history/delete-all", methods=["POST"])
+@admin_required
 def delete_all_history():
     try:
         history_store().delete_all()
@@ -430,6 +480,28 @@ def delete_all_history():
         return render_template("history.html", items=[], total=0, page=1, page_count=1,
                                error="Chưa xoá được toàn bộ lịch sử. Vui lòng tải lại trang và thử lại."), 503
     return redirect(url_for("history"))
+
+
+@app.route("/admin/login", methods=["GET", "POST"])
+def admin_login():
+    error = None
+    if request.method == "POST":
+        email = os.environ.get("ADMIN_EMAIL", "").strip().lower()
+        password = os.environ.get("ADMIN_PASSWORD", "")
+        email_ok = same_text(request.form.get("email", "").strip().lower(), email)
+        password_ok = same_text(request.form.get("password", ""), password)
+        if email and password and email_ok and password_ok:
+            session["admin_at"] = time.time()
+            session.permanent = True
+            return redirect(url_for("history"))
+        error = "Email hoặc mật khẩu không đúng."
+    return render_template("admin_login.html", error=error), (401 if error else 200)
+
+
+@app.route("/admin/logout", methods=["POST"])
+def admin_logout():
+    session.pop("admin_at", None)
+    return redirect(url_for("index"))
 
 
 if __name__ == "__main__":

@@ -1,4 +1,12 @@
 <nav class="app-navigation" aria-label="Chức năng">
   <a href="{{ url_for('index') }}" class="nav-link {{ 'active' if request.endpoint == 'index' else '' }}" {% if request.endpoint == 'index' %}aria-current="page"{% endif %}>Chấm màu da</a>
   <a href="{{ url_for('history') }}" class="nav-link {{ 'active' if request.endpoint == 'history' else '' }}" {% if request.endpoint == 'history' %}aria-current="page"{% endif %}>Lịch sử chấm</a>
+  {% if is_admin %}
+  <form method="post" action="{{ url_for('admin_logout') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button class="nav-link" type="submit" style="width:100%;text-align:left;background:none;border:0;font:inherit;font-weight:600;cursor:pointer">Đăng xuất admin</button>
+  </form>
+  {% else %}
+  <a href="{{ url_for('admin_login') }}" class="nav-link {{ 'active' if request.endpoint == 'admin_login' else '' }}">Đăng nhập admin</a>
+  {% endif %}
 </nav>

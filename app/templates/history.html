@@ -12,7 +12,7 @@
     <header class="hero">
       <div class="eyebrow">Công cụ chấm màu da</div>
       <h1>Lịch sử chấm</h1>
-      <p>Xem lại kết quả từ các lần tải ảnh và xuất Excel có ảnh gốc.</p>
+      <p>{% if is_admin %}Xem lại kết quả từ các lần tải ảnh và xuất Excel có ảnh gốc.{% else %}Các ảnh bạn đã chấm trên trình duyệt này.{% endif %}</p>
     </header>
     <div class="workspace">
       <aside class="panel sidebar">
@@ -28,7 +28,7 @@
           </select>
           <noscript><button class="secondary" type="submit">Áp dụng</button></noscript>
         </form>
-        {% if total and not error %}
+        {% if is_admin and total and not error %}
         <a class="primary action-link export-link" href="{{ url_for('export_history') }}">Xuất Excel có ảnh</a>
         <p class="export-note">Xuất toàn bộ lịch sử, gồm cả ảnh gốc trong từng dòng.</p>
         <form class="delete-all-form" method="post" action="{{ url_for('delete_all_history') }}" data-total="{{ total }}">
@@ -58,12 +58,14 @@
                 <td>
                   {% if item.ok %}<span class="badge ok">Nhóm {{ item.skin_tone_group }}</span><div class="tone-label">{{ item.skin_tone_label }}</div>
                   {% else %}<span class="badge fail">Không chấm được</span><div class="tone-label">{{ item.message }}</div>{% endif %}
+                  {% if is_admin %}
                   <form class="delete-form" method="post" action="{{ url_for('delete_history', record_id=item.id) }}">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <input type="hidden" name="page" value="{{ page }}">
                     <input type="hidden" name="per_page" value="{{ selected_size }}">
                     <button class="delete-button" type="submit" aria-label="Xoá kết quả {{ item.file_name }}">Xoá kết quả</button>
                   </form>
+                  {% endif %}
                 </td>
               </tr>
               {% endfor %}

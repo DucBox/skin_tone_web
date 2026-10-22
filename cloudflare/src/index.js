@@ -17,6 +17,9 @@ export class SkinToneContainer extends Container {
       S3_ACCESS_KEY_ID: env.S3_ACCESS_KEY_ID,
       S3_SECRET_ACCESS_KEY: env.S3_SECRET_ACCESS_KEY,
       SECRET_KEY: env.SECRET_KEY,
+      ADMIN_EMAIL: env.ADMIN_EMAIL,
+      ADMIN_PASSWORD: env.ADMIN_PASSWORD,
+      SESSION_COOKIE_SECURE: "1",
     };
   }
 }

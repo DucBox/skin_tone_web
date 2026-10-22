@@ -18,7 +18,8 @@ from app.history_store import HistoryStore
 class HistoryTests(unittest.TestCase):
     def setUp(self):
         self.directory = tempfile.TemporaryDirectory()
-        env = {"HISTORY_DIR": self.directory.name}
+        env = {"HISTORY_DIR": self.directory.name,
+               "ADMIN_EMAIL": "admin@example.test", "ADMIN_PASSWORD": "correct horse battery"}
         self.environment = patch.dict(os.environ, env)
         self.environment.start()
         web_app.history_store.cache_clear()
@@ -27,6 +28,9 @@ class HistoryTests(unittest.TestCase):
         self.client.get("/")
         with self.client.session_transaction() as session:
             self.token = session["csrf_token"]
+        login = self.client.post("/admin/login", data={
+            "csrf_token": self.token, "email": "Admin@Example.test", "password": "correct horse battery"})
+        self.assertEqual(login.status_code, 302)
         self.photo = np.full((80, 60, 3), 120, dtype=np.uint8)
         self.png = cv2.imencode(".png", self.photo)[1].tobytes()
         self.analysis = patch.object(web_app, "analyze_image_array", return_value={
@@ -43,9 +47,15 @@ class HistoryTests(unittest.TestCase):
         web_app.history_store.cache_clear()
         self.directory.cleanup()
 
-    def upload(self, name):
-        return self.client.post("/", data={"csrf_token": self.token,
+    def upload(self, name, client=None, token=None):
+        return (client or self.client).post("/", data={"csrf_token": token or self.token,
             "single_image": (io.BytesIO(self.png), name)}, content_type="multipart/form-data")
+
+    def visitor(self):
+        client = web_app.app.test_client()
+        client.get("/")
+        with client.session_transaction() as session:
+            return client, session["csrf_token"]
 
     def test_history_survives_separate_uploads_and_store_restart_and_embeds_originals(self):
         self.assertEqual(self.upload("portrait-one.png").status_code, 200)
@@ -139,6 +149,71 @@ class HistoryTests(unittest.TestCase):
         self.assertEqual(html.count('class="history-photo"'), 10)
         self.assertEqual(self.client.get("/history?per_page=invalid").get_data(as_text=True).count('class="history-photo"'), 20)
         self.assertEqual(self.client.get("/history/not-an-id/image/preview").status_code, 404)
+
+    def test_visitors_only_see_their_own_history_and_cannot_use_admin_actions(self):
+        mine, mine_token = self.visitor()
+        other, other_token = self.visitor()
+        self.upload("admin-photo.png")
+        self.upload("mine.png", mine, mine_token)
+        self.upload("other.png", other, other_token)
+        store = web_app.history_store()
+        self.assertEqual(len(store.ids()), 3)
+        with mine.session_transaction() as session:
+            mine_owner = session["owner"]
+        (mine_record,) = store.ids(mine_owner)
+        self.assertEqual(store.get(mine_record)["file_name"], "mine.png")
+
+        html = mine.get("/history").get_data(as_text=True)
+        self.assertIn("mine.png", html)
+        self.assertNotIn("other.png", html)
+        self.assertNotIn("admin-photo.png", html)
+        self.assertNotIn("Xuất Excel", html)
+        self.assertNotIn("delete-button", html)
+        admin_html = self.client.get("/history").get_data(as_text=True)
+        for name in ("mine.png", "other.png", "admin-photo.png"):
+            self.assertIn(name, admin_html)
+
+        self.assertEqual(mine.get(f"/history/{mine_record}/image/preview").status_code, 200)
+        foreign = next(i for i in store.ids() if i != mine_record)
+        for kind in ("original", "preview", "visualization"):
+            self.assertEqual(mine.get(f"/history/{foreign}/image/{kind}").status_code, 404)
+        self.assertEqual(web_app.app.test_client().get(f"/history/{mine_record}/image/preview").status_code, 404)
+
+        for client, token in ((mine, mine_token), (web_app.app.test_client(), "x")):
+            self.assertEqual(client.get("/history/export.xlsx").status_code, 302)
+            for path in (f"/history/{mine_record}/delete", "/history/delete-all"):
+                response = client.post(path, data={"csrf_token": token})
+                self.assertIn(response.status_code, (302, 400))
+        self.assertEqual(len(store.ids()), 3)
+
+    def test_admin_login_rejects_bad_credentials_and_is_disabled_without_config(self):
+        visitor, token = self.visitor()
+        bad = visitor.post("/admin/login", data={"csrf_token": token, "email": "admin@example.test", "password": "wrong"})
+        self.assertEqual(bad.status_code, 401)
+        self.assertEqual(visitor.get("/history/export.xlsx").status_code, 302)
+        with patch.dict(os.environ, {"ADMIN_EMAIL": "", "ADMIN_PASSWORD": ""}):
+            blank = visitor.post("/admin/login", data={"csrf_token": token, "email": "", "password": ""})
+        self.assertEqual(blank.status_code, 401)
+        self.assertEqual(visitor.post("/admin/login", data={"email": "admin@example.test", "password": "correct horse battery"}).status_code, 400)
+        self.client.post("/admin/logout", data={"csrf_token": self.token})
+        self.assertEqual(self.client.get("/history/export.xlsx").status_code, 302)
+
+    def test_legacy_records_without_owner_are_admin_only_and_delete_cleans_index(self):
+        visitor, token = self.visitor()
+        store = web_app.history_store()
+        item = web_app.build_item_result("legacy.png", self.analyzer.return_value)
+        legacy = store.save(item, self.png, "image/png", None, self.png)["id"]
+        self.assertNotIn("owner", store.get(legacy))
+        self.upload("visitor.png", visitor, token)
+        with visitor.session_transaction() as session:
+            owner = session["owner"]
+        (visitor_record,) = store.ids(owner)
+        self.assertEqual(visitor.get(f"/history/{legacy}/image/preview").status_code, 404)
+        self.assertEqual(self.client.get(f"/history/{legacy}/image/preview").status_code, 200)
+        self.assertNotIn("legacy.png", visitor.get("/history").get_data(as_text=True))
+        self.client.post(f"/history/{visitor_record}/delete", data={"csrf_token": self.token})
+        self.assertEqual(store.ids(owner), [])
+        self.assertEqual(list((store.root / store.OWNER_PREFIX).glob("*/*")), [])
 
     def test_s3_upload_list_read_and_delete_contract(self):
         from botocore.stub import Stubber, ANY
