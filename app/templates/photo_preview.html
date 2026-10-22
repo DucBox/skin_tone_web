@@ -1,7 +1,7 @@
 <dialog id="photo-preview" class="photo-preview" aria-labelledby="photo-preview-name">
   <div class="preview-toolbar">
     <span id="photo-preview-name">Ảnh gốc</span>
-    <button type="button" id="close-photo-preview" class="secondary" aria-label="Đóng preview ảnh">Đóng ×</button>
+    <button type="button" id="close-photo-preview" class="secondary" aria-label="Đóng ảnh phóng to">Đóng ×</button>
   </div>
   <div class="preview-canvas"><img id="photo-preview-image" alt="Ảnh gốc"></div>
 </dialog>
@@ -24,7 +24,7 @@
     if (original) {
       original.setAttribute('tabindex', '0');
       original.setAttribute('role', 'button');
-      original.setAttribute('aria-label', 'Xem preview ảnh gốc');
+      original.setAttribute('aria-label', 'Xem ảnh gốc phóng to');
       const openOriginal = () => openPhoto(original.getAttribute('src'), document.getElementById('detail-path')?.textContent);
       original.addEventListener('click', openOriginal);
       original.addEventListener('keydown', event => {

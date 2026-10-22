@@ -21,14 +21,38 @@
         {% if error %}<div class="error" role="alert">{{ error }}</div>{% endif %}
         <form class="page-size-form" method="post" action="{{ url_for('admin_login') }}">
           <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-          <label for="email">Email</label>
-          <input id="email" name="email" type="email" autocomplete="username" required style="width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font:inherit;margin-bottom:16px">
+          <label for="username">Tài khoản</label>
+          <input id="username" name="username" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" required style="width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font:inherit;margin-bottom:16px">
           <label for="password">Mật khẩu</label>
-          <input id="password" name="password" type="password" autocomplete="current-password" required style="width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font:inherit;margin-bottom:16px">
+          <div style="position:relative;margin-bottom:16px">
+            <input id="password" name="password" type="password" autocomplete="current-password" required style="width:100%;padding:10px 48px 10px 12px;border:1px solid var(--line);border-radius:10px;font:inherit">
+            <button type="button" id="toggle-password" aria-label="Hiện mật khẩu" aria-pressed="false" title="Hiện mật khẩu" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);padding:6px 8px;background:none;border:0;border-radius:8px;cursor:pointer;color:var(--muted);line-height:0">
+              <svg id="eye-open" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>
+              <svg id="eye-closed" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:none"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 19C5 19 1 12 1 12a18.5 18.5 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.1 9.1 0 0 1 12 5c7 0 11 7 11 7a18.5 18.5 0 0 1-2.16 3.19"/><path d="M14.12 14.12A3 3 0 1 1 9.88 9.88"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+            </button>
+          </div>
           <button class="primary" type="submit">Đăng nhập</button>
         </form>
       </section>
     </div>
   </main>
+  <script>
+    (function () {
+      var input = document.getElementById("password");
+      var button = document.getElementById("toggle-password");
+      var open = document.getElementById("eye-open");
+      var closed = document.getElementById("eye-closed");
+      button.addEventListener("click", function () {
+        var show = input.type === "password";
+        input.type = show ? "text" : "password";
+        open.style.display = show ? "none" : "";
+        closed.style.display = show ? "" : "none";
+        var label = show ? "Ẩn mật khẩu" : "Hiện mật khẩu";
+        button.setAttribute("aria-label", label);
+        button.setAttribute("title", label);
+        button.setAttribute("aria-pressed", show ? "true" : "false");
+      });
+    })();
+  </script>
 </body>
 </html>

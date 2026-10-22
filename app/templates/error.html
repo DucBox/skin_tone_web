@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Có lỗi xảy ra</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+</head>
+<body>
+  <main class="page">
+    <header class="hero">
+      <div class="eyebrow">Mã lỗi {{ code }}</div>
+      <h1>Có lỗi xảy ra</h1>
+      <p>{{ message }}</p>
+      <div class="button-row" style="margin-top:14px;">
+        <a class="secondary action-link" href="{{ url_for('index') }}">Về trang chấm màu da</a>
+      </div>
+    </header>
+  </main>
+</body>
+</html>

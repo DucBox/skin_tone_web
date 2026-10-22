@@ -3,6 +3,7 @@ import json
 import os
 import re
 from pathlib import Path
+from urllib.parse import quote
 from uuid import uuid4
 from datetime import datetime, timezone
 
@@ -155,10 +156,12 @@ class HistoryStore:
         if record.get("owner"):
             self.remove_keys([self.owner_key(record["owner"], record_id)])
 
-    def signed_url(self, record_id, name):
-        return self.client.generate_presigned_url(
-            "get_object", Params={"Bucket": self.bucket, "Key": self.key(record_id, name)},
-            ExpiresIn=900)
+    def signed_url(self, record_id, name, download_name=None):
+        params = {"Bucket": self.bucket, "Key": self.key(record_id, name)}
+        if download_name:
+            params["ResponseContentDisposition"] = (
+                "attachment; filename*=UTF-8''" + quote(download_name, safe=""))
+        return self.client.generate_presigned_url("get_object", Params=params, ExpiresIn=900)
 
     def delete_all(self):
         # Snapshot IDs so uploads arriving during deletion are preserved.

@@ -52,6 +52,7 @@
                     <img class="history-photo" src="{{ url_for('history_image', record_id=item.id, kind='preview') }}" alt="Ảnh {{ item.file_name }}" loading="lazy">
                   </button>
                   <div class="photo-name">{{ item.file_name }}</div>
+                  <a class="photo-download" href="{{ url_for('history_image', record_id=item.id, kind='original', download=1) }}" download>Tải ảnh gốc</a>
                 </td>
                 <td class="score">{{ '%.2f'|format(item.average_lstar) if item.average_lstar is not none else '—' }}</td>
                 <td>{{ item.skin_tone_range or '—' }}</td>

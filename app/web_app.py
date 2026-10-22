@@ -1,5 +1,4 @@
 import base64
-import csv
 import io
 import os
 import secrets
@@ -134,46 +133,6 @@ def encode_image_data_url(image_bgr):
     return f"data:image/jpeg;base64,{encoded_text}"
 
 
-def encode_csv_data_url(analyzed_items):
-    buffer = io.StringIO()
-    buffer.write("sep=;\n")
-    writer = csv.DictWriter(
-        buffer,
-        fieldnames=[
-            "duong_dan_anh",
-            "trang_thai",
-            "lstar_ma_trai",
-            "lstar_ma_phai",
-            "lstar_trung_binh",
-            "nhom_mau_da",
-            "mo_ta_nhom",
-            "nguong_nhom",
-            "thong_bao",
-        ],
-        delimiter=";",
-        lineterminator="\n",
-    )
-    writer.writeheader()
-
-    for item in analyzed_items:
-        writer.writerow(
-            {
-                "duong_dan_anh": item["display_path"],
-                "trang_thai": "Thanh cong" if item["ok"] else "Loi",
-                "lstar_ma_trai": item["left_lstar"] if item["left_lstar"] is not None else "",
-                "lstar_ma_phai": item["right_lstar"] if item["right_lstar"] is not None else "",
-                "lstar_trung_binh": item["average_lstar"] if item["average_lstar"] is not None else "",
-                "nhom_mau_da": item["skin_tone_group"] if item["skin_tone_group"] is not None else "",
-                "mo_ta_nhom": item["skin_tone_label"] if item["skin_tone_label"] else "",
-                "nguong_nhom": item["skin_tone_range"] if item["skin_tone_range"] else "",
-                "thong_bao": item["message"],
-            }
-        )
-
-    csv_bytes = ("\ufeff" + buffer.getvalue()).encode("utf-8")
-    encoded_text = base64.b64encode(csv_bytes).decode("ascii")
-    return f"data:text/csv;base64,{encoded_text}"
-
 
 def allowed_image(filename):
     return Path(filename).suffix.lower() in SUPPORTED_IMAGE_EXTENSIONS
@@ -235,7 +194,7 @@ def analyze_files(file_storages, brightness_scale):
         analysis_result = analyze_image_array(
             image,
             mode="largest",
-            draw_labels=True,
+            draw_labels=False,
             brightness_scale=brightness_scale,
         )
         item = build_item_result(file_storage.filename, analysis_result)
@@ -295,7 +254,6 @@ def index():
     selected_item = analyzed_items[0] if analyzed_items else None
     total_count = len(analyzed_items)
     success_count = sum(1 for item in analyzed_items if item["ok"])
-    csv_export_url = encode_csv_data_url(analyzed_items) if analyzed_items else None
 
     return render_template(
         "index.html",
@@ -304,7 +262,6 @@ def index():
         error=error,
         total_count=total_count,
         success_count=success_count,
-        csv_export_url=csv_export_url,
     )
 
 
@@ -346,6 +303,7 @@ def history_image(record_id, kind):
     names = {"original": "original", "preview": "original", "visualization": "visualization.jpg"}
     if kind not in names:
         abort(404)
+    download = kind == "original" and request.args.get("download") == "1"
     try:
         store = history_store()
         record = store.get(record_id)
@@ -364,12 +322,13 @@ def history_image(record_id, kind):
                 abort(503)
             return send_file(io.BytesIO(encoded.tobytes()), mimetype="image/png", as_attachment=False)
         if store.client:
-            response = redirect(store.signed_url(record_id, names[kind]))
+            response = redirect(store.signed_url(
+                record_id, names[kind], download_name=record["file_name"] if download else None))
             response.headers["Cache-Control"] = "no-store"
             return response
         return send_file(io.BytesIO(store.read(store.key(record_id, names[kind]))),
                          mimetype=record["original_type"] if kind in ("original", "preview") else "image/jpeg",
-                         download_name=record["file_name"], as_attachment=False)
+                         download_name=record["file_name"], as_attachment=download)
     except (ValueError, FileNotFoundError):
         abort(404)
     except HTTPException:
@@ -482,19 +441,36 @@ def delete_all_history():
     return redirect(url_for("history"))
 
 
+ERROR_MESSAGES = {
+    400: "Yêu cầu không hợp lệ.",
+    404: "Không tìm thấy trang hoặc dữ liệu bạn yêu cầu.",
+    405: "Thao tác này không được hỗ trợ.",
+    413: "Tệp tải lên quá lớn.",
+    503: "Dịch vụ tạm thời chưa phản hồi. Vui lòng thử lại.",
+}
+
+
+@app.errorhandler(HTTPException)
+def vietnamese_error(error):
+    code = error.code or 500
+    message = error.description if code == 400 and error.description else None
+    message = message or ERROR_MESSAGES.get(code, "Đã có lỗi xảy ra. Vui lòng thử lại.")
+    return render_template("error.html", code=code, message=message), code
+
+
 @app.route("/admin/login", methods=["GET", "POST"])
 def admin_login():
     error = None
     if request.method == "POST":
-        email = os.environ.get("ADMIN_EMAIL", "").strip().lower()
+        username = os.environ.get("ADMIN_EMAIL", "").strip()
         password = os.environ.get("ADMIN_PASSWORD", "")
-        email_ok = same_text(request.form.get("email", "").strip().lower(), email)
+        username_ok = same_text(request.form.get("username", "").strip(), username)
         password_ok = same_text(request.form.get("password", ""), password)
-        if email and password and email_ok and password_ok:
+        if username and password and username_ok and password_ok:
             session["admin_at"] = time.time()
             session.permanent = True
             return redirect(url_for("history"))
-        error = "Email hoặc mật khẩu không đúng."
+        error = "Tài khoản hoặc mật khẩu không đúng."
     return render_template("admin_login.html", error=error), (401 if error else 200)
 
 

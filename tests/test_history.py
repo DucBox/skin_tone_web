@@ -19,7 +19,7 @@ class HistoryTests(unittest.TestCase):
     def setUp(self):
         self.directory = tempfile.TemporaryDirectory()
         env = {"HISTORY_DIR": self.directory.name,
-               "ADMIN_EMAIL": "admin@example.test", "ADMIN_PASSWORD": "correct horse battery"}
+               "ADMIN_EMAIL": "admin", "ADMIN_PASSWORD": "correct horse battery"}
         self.environment = patch.dict(os.environ, env)
         self.environment.start()
         web_app.history_store.cache_clear()
@@ -29,7 +29,7 @@ class HistoryTests(unittest.TestCase):
         with self.client.session_transaction() as session:
             self.token = session["csrf_token"]
         login = self.client.post("/admin/login", data={
-            "csrf_token": self.token, "email": "Admin@Example.test", "password": "correct horse battery"})
+            "csrf_token": self.token, "username": "admin", "password": "correct horse battery"})
         self.assertEqual(login.status_code, 302)
         self.photo = np.full((80, 60, 3), 120, dtype=np.uint8)
         self.png = cv2.imencode(".png", self.photo)[1].tobytes()
@@ -188,13 +188,13 @@ class HistoryTests(unittest.TestCase):
 
     def test_admin_login_rejects_bad_credentials_and_is_disabled_without_config(self):
         visitor, token = self.visitor()
-        bad = visitor.post("/admin/login", data={"csrf_token": token, "email": "admin@example.test", "password": "wrong"})
+        bad = visitor.post("/admin/login", data={"csrf_token": token, "username": "admin", "password": "wrong"})
         self.assertEqual(bad.status_code, 401)
         self.assertEqual(visitor.get("/history/export.xlsx").status_code, 302)
         with patch.dict(os.environ, {"ADMIN_EMAIL": "", "ADMIN_PASSWORD": ""}):
-            blank = visitor.post("/admin/login", data={"csrf_token": token, "email": "", "password": ""})
+            blank = visitor.post("/admin/login", data={"csrf_token": token, "username": "", "password": ""})
         self.assertEqual(blank.status_code, 401)
-        self.assertEqual(visitor.post("/admin/login", data={"email": "admin@example.test", "password": "correct horse battery"}).status_code, 400)
+        self.assertEqual(visitor.post("/admin/login", data={"username": "admin", "password": "correct horse battery"}).status_code, 400)
         self.client.post("/admin/logout", data={"csrf_token": self.token})
         self.assertEqual(self.client.get("/history/export.xlsx").status_code, 302)
 
@@ -214,6 +214,61 @@ class HistoryTests(unittest.TestCase):
         self.client.post(f"/history/{visitor_record}/delete", data={"csrf_token": self.token})
         self.assertEqual(store.ids(owner), [])
         self.assertEqual(list((store.root / store.OWNER_PREFIX).glob("*/*")), [])
+
+    def test_result_page_is_vietnamese_and_minimal(self):
+        html = self.upload("portrait.png").get_data(as_text=True)
+        for gone in ("Bản test", "Group ", "CSV", "Tham chiếu", "Ngưỡng nhóm", "modal-note",
+                     "L* má trái", "L* má phải", "Original image", "Visualization"):
+            self.assertNotIn(gone, html)
+        self.assertIn("Nhóm 2", html)
+        self.assertIn("Thông tin kết quả", html)
+        self.assertIn("Vàng sáng / Olive nhạt", html)
+        self.assertFalse(self.analyzer.call_args.kwargs["draw_labels"])
+
+    def test_error_pages_are_vietnamese_and_login_has_password_toggle(self):
+        missing = self.client.get("/history/not-an-id/image/preview")
+        self.assertEqual(missing.status_code, 404)
+        self.assertIn("Không tìm thấy", missing.get_data(as_text=True))
+        self.assertNotIn("Not Found", missing.get_data(as_text=True))
+        login = self.visitor()[0].get("/admin/login").get_data(as_text=True)
+        self.assertIn('id="toggle-password"', login)
+        self.assertIn("Tài khoản", login)
+        self.assertNotIn('type="email"', login)
+
+    def test_original_download_keeps_filename_and_respects_ownership(self):
+        mine, mine_token = self.visitor()
+        other, other_token = self.visitor()
+        self.upload("ảnh chân dung.png", mine, mine_token)
+        self.upload("other.png", other, other_token)
+        store = web_app.history_store()
+        with mine.session_transaction() as session:
+            (own,) = store.ids(session["owner"])
+        history = mine.get("/history").get_data(as_text=True)
+        self.assertIn("Tải ảnh gốc", history)
+        self.assertIn(f"/history/{own}/image/original?download=1", history)
+        download = mine.get(f"/history/{own}/image/original?download=1")
+        self.assertEqual(download.status_code, 200)
+        self.assertEqual(download.data, self.png)
+        self.assertIn("attachment", download.headers["Content-Disposition"])
+        self.assertEqual(self.client.get(f"/history/{own}/image/original?download=1").status_code, 200)
+        foreign = next(i for i in store.ids() if i != own and store.get(i)["file_name"] == "other.png")
+        self.assertEqual(mine.get(f"/history/{foreign}/image/original?download=1").status_code, 404)
+        inline = mine.get(f"/history/{own}/image/original")
+        self.assertNotIn("attachment", inline.headers.get("Content-Disposition", ""))
+
+    def test_signed_download_url_forces_attachment_with_utf8_name(self):
+        settings = {"S3_BUCKET_NAME": "test-bucket", "S3_ENDPOINT_URL": "https://storage.example.test",
+                    "S3_ACCESS_KEY_ID": "test-key", "S3_SECRET_ACCESS_KEY": "test-secret", "S3_REGION": "auto"}
+        with patch.dict(os.environ, settings):
+            store = HistoryStore()
+        record_id = "20261022T134624481983Z-" + "a" * 32
+        plain = store.signed_url(record_id, "original")
+        named = store.signed_url(record_id, "original", download_name="ảnh\r\n\"x\".png")
+        self.assertNotIn("response-content-disposition", plain)
+        self.assertIn("response-content-disposition=attachment", named)
+        self.assertIn("filename%2A%3DUTF-8%27%27%25E1%25BA%25A3nh", named)
+        for raw in ("%0D", "%0A", "%22"):  # CR/LF/quote must stay percent-encoded inside the header value
+            self.assertNotIn(raw, named)
 
     def test_s3_upload_list_read_and_delete_contract(self):
         from botocore.stub import Stubber, ANY

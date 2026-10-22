@@ -32,6 +32,8 @@
     .assessment-table th:first-child { width: 32%; }
     .history-photo { display: block; width: 150px; height: 140px; object-fit: contain; background: #edeae5; border-radius: 12px; }
     .photo-name { margin-top: 8px; font-size: 12px; overflow-wrap: anywhere; max-width: 190px; color: var(--muted); }
+    .photo-download { display: inline-block; margin-top: 6px; font-size: 13px; font-weight: 600; color: var(--accent-2); text-decoration: none; }
+    .photo-download:hover { text-decoration: underline; }
     .score { font-size: 22px; font-weight: 650; font-variant-numeric: tabular-nums; }
     .tone-label { margin-top: 8px; line-height: 1.5; }
     .delete-form { margin-top: 12px; }
