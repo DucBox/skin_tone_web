@@ -9,6 +9,7 @@
       "image": "../Dockerfile",
       "image_build_context": "..",
       "max_instances": 2,
+      "constraints": { "regions": ["APAC"] },
       "instance_type": "standard-1"
     }
   ],

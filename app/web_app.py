@@ -53,6 +53,9 @@ def history_store():
 def csrf_context():
     if "csrf_token" not in session:
         session["csrf_token"] = secrets.token_urlsafe(32)
+    # Create the owner ID when a page is opened, not at first save: two tabs
+    # uploading at once on a first visit would otherwise mint different IDs.
+    owner_id()
     return {"csrf_token": session["csrf_token"]}
 
 

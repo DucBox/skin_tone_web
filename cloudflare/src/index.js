@@ -2,7 +2,7 @@ import { Container, getContainer } from "@cloudflare/containers";
 
 export class SkinToneContainer extends Container {
   defaultPort = 8080;
-  sleepAfter = "30m";
+  sleepAfter = "10m";
 
   constructor(ctx, env) {
     super(ctx, env);

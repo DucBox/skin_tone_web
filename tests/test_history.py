@@ -235,6 +235,19 @@ class HistoryTests(unittest.TestCase):
         self.assertIn("Tài khoản", login)
         self.assertNotIn('type="email"', login)
 
+    def test_owner_id_exists_before_first_upload_and_survives_parallel_first_saves(self):
+        visitor, token = self.visitor()
+        with visitor.session_transaction() as session:
+            owner = session["owner"]
+        self.assertRegex(owner, r"^[a-f0-9]{32}$")
+        # Two uploads sent with the same (cookie-less-of-new-state) session keep one owner.
+        self.upload("tab-one.png", visitor, token)
+        self.upload("tab-two.png", visitor, token)
+        with visitor.session_transaction() as session:
+            self.assertEqual(session["owner"], owner)
+        self.assertEqual(len(web_app.history_store().ids(owner)), 2)
+        self.assertNotIn("tab-one.png", web_app.app.test_client().get("/history").get_data(as_text=True))
+
     def test_original_download_keeps_filename_and_respects_ownership(self):
         mine, mine_token = self.visitor()
         other, other_token = self.visitor()
