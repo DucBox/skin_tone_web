@@ -30,7 +30,7 @@ class HistoryStore:
                               read_timeout=30, retries={"max_attempts": 2},
                               s3={"addressing_style": os.environ.get("S3_URL_STYLE", "virtual")}),
             )
-        elif os.environ.get("RAILWAY_ENVIRONMENT_ID"):
+        elif os.environ.get("RAILWAY_ENVIRONMENT_ID") or os.environ.get("REQUIRE_BUCKET"):
             raise RuntimeError("Chưa cấu hình Bucket để lưu lịch sử.")
         self.root = Path(os.environ.get("HISTORY_DIR", "history_data"))
 

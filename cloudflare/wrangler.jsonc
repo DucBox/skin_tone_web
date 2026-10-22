@@ -1,0 +1,25 @@
+{
+  "name": "skin-tone-app",
+  "main": "src/index.js",
+  "compatibility_date": "2025-06-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "containers": [
+    {
+      "class_name": "SkinToneContainer",
+      "image": "../Dockerfile",
+      "image_build_context": "..",
+      "max_instances": 2,
+      "instance_type": "standard-1"
+    }
+  ],
+  "durable_objects": {
+    "bindings": [{ "class_name": "SkinToneContainer", "name": "SKIN_TONE_CONTAINER" }]
+  },
+  "migrations": [{ "new_sqlite_classes": ["SkinToneContainer"], "tag": "v1" }],
+  "vars": {
+    "S3_BUCKET_NAME": "skin-tone-history",
+    "S3_ENDPOINT_URL": "https://6782176d9bb2f0676cfa4b3f7f207dfb.r2.cloudflarestorage.com",
+    "S3_REGION": "auto",
+    "S3_URL_STYLE": "path"
+  }
+}
