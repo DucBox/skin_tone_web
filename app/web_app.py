@@ -41,7 +41,7 @@ app.config.update(
     PERMANENT_SESSION_LIFETIME=timedelta(days=365),
 )
 ADMIN_SESSION_SECONDS = 30 * 24 * 3600
-DEFAULT_BRIGHTNESS_SCALE = normalize_brightness_scale(0.97)
+DEFAULT_BRIGHTNESS_SCALE = normalize_brightness_scale(0.95)
 
 
 @lru_cache(maxsize=1)
