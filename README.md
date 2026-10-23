@@ -75,7 +75,7 @@ Web hien ho tro:
 - Xuat CSV
 
 Ghi chu:
-- Web hien dang co dinh `brightness scale = 0.92` o backend
+- Web hien dang co dinh `brightness scale = 0.97` o backend
 - `brightness scale` chi anh huong den backend tinh `L*`
 - Anh goc va visualization van dung anh goc
 
