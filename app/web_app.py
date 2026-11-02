@@ -63,6 +63,15 @@ def is_admin():
     return time.time() - session.get("admin_at", 0) < ADMIN_SESSION_SECONDS
 
 
+def is_viewer():
+    """Read-only staff account: sees all history, downloads and exports, cannot delete."""
+    return time.time() - session.get("viewer_at", 0) < ADMIN_SESSION_SECONDS
+
+
+def can_view_all():
+    return is_admin() or is_viewer()
+
+
 def owner_id():
     """Anonymous per-browser ID; visitors only see records saved under it."""
     if "owner" not in session:
@@ -73,7 +82,7 @@ def owner_id():
 
 def can_access(record):
     owner = record.get("owner")
-    return is_admin() or bool(owner and secrets.compare_digest(owner, session.get("owner", "")))
+    return can_view_all() or bool(owner and secrets.compare_digest(owner, session.get("owner", "")))
 
 
 def admin_required(view):
@@ -85,13 +94,22 @@ def admin_required(view):
     return wrapper
 
 
+def staff_required(view):
+    @wraps(view)
+    def wrapper(*args, **kwargs):
+        if not can_view_all():
+            return redirect(url_for("admin_login"))
+        return view(*args, **kwargs)
+    return wrapper
+
+
 def same_text(supplied, expected):
     return secrets.compare_digest(supplied.encode("utf-8"), expected.encode("utf-8"))
 
 
 @app.context_processor
 def admin_context():
-    return {"is_admin": is_admin()}
+    return {"is_admin": is_admin(), "can_view_all": can_view_all()}
 
 
 @app.before_request
@@ -279,7 +297,7 @@ def history():
     page_count = 1
     try:
         store = history_store()
-        ids = store.ids(None if is_admin() else owner_id())
+        ids = store.ids(None if can_view_all() else owner_id())
         total = len(ids)
         if per_page == "all":
             page = 1
@@ -363,7 +381,7 @@ def delete_history(record_id):
 
 
 @app.route("/history/export.xlsx")
-@admin_required
+@staff_required
 def export_history():
     from openpyxl import Workbook
     from openpyxl.drawing.image import Image as ExcelImage
@@ -467,14 +485,19 @@ def vietnamese_error(error):
 def admin_login():
     error = None
     if request.method == "POST":
-        username = os.environ.get("ADMIN_EMAIL", "").strip()
-        password = os.environ.get("ADMIN_PASSWORD", "")
-        username_ok = same_text(request.form.get("username", "").strip(), username)
-        password_ok = same_text(request.form.get("password", ""), password)
-        if username and password and username_ok and password_ok:
-            session["admin_at"] = time.time()
-            session.permanent = True
-            return redirect(url_for("history"))
+        supplied_user = request.form.get("username", "").strip()
+        supplied_pass = request.form.get("password", "")
+        for role, user_env, pass_env, default_user, default_pass in (
+                ("admin_at", "ADMIN_EMAIL", "ADMIN_PASSWORD", "", ""),
+                ("viewer_at", "VIEWER_EMAIL", "VIEWER_PASSWORD", "viettin", "viettin@1")):
+            username = os.environ.get(user_env, default_user).strip()
+            password = os.environ.get(pass_env, default_pass)
+            username_ok = same_text(supplied_user, username)
+            password_ok = same_text(supplied_pass, password)
+            if username and password and username_ok and password_ok:
+                session["admin_at" if role == "admin_at" else "viewer_at"] = time.time()
+                session.permanent = True
+                return redirect(url_for("history"))
         error = "Tài khoản hoặc mật khẩu không đúng."
     return render_template("admin_login.html", error=error), (401 if error else 200)
 
@@ -482,6 +505,7 @@ def admin_login():
 @app.route("/admin/logout", methods=["POST"])
 def admin_logout():
     session.pop("admin_at", None)
+    session.pop("viewer_at", None)
     return redirect(url_for("index"))
 
 

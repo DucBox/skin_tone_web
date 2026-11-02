@@ -12,7 +12,7 @@
     <header class="hero">
       <div class="eyebrow">Công cụ chấm màu da</div>
       <h1>Lịch sử chấm</h1>
-      <p>{% if is_admin %}Xem lại kết quả từ các lần tải ảnh và xuất Excel có ảnh gốc.{% else %}Các ảnh bạn đã chấm trên trình duyệt này.{% endif %}</p>
+      <p>{% if can_view_all %}Xem lại kết quả từ các lần tải ảnh và xuất Excel có ảnh gốc.{% else %}Các ảnh bạn đã chấm trên trình duyệt này.{% endif %}</p>
     </header>
     <div class="workspace">
       <aside class="panel sidebar">
@@ -28,9 +28,11 @@
           </select>
           <noscript><button class="secondary" type="submit">Áp dụng</button></noscript>
         </form>
-        {% if is_admin and total and not error %}
+        {% if can_view_all and total and not error %}
         <a class="primary action-link export-link" href="{{ url_for('export_history') }}">Xuất Excel có ảnh</a>
         <p class="export-note">Xuất toàn bộ lịch sử, gồm cả ảnh gốc trong từng dòng.</p>
+        {% endif %}
+        {% if is_admin and total and not error %}
         <form class="delete-all-form" method="post" action="{{ url_for('delete_all_history') }}" data-total="{{ total }}">
           <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
           <button class="delete-button" type="submit">Xoá tất cả lịch sử</button>
