@@ -105,12 +105,19 @@
         const label = link.textContent;
         link.textContent = 'Đang tải…';
         try {
-          const response = await fetch(link.href);
-          const blob = await response.blob();
-          const disposition = response.headers.get('Content-Disposition') || '';
-          const match = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(disposition);
-          const name = match ? decodeURIComponent(match[1]) : 'anh-goc.jpg';
-          const file = new File([blob], name, {type: blob.type});
+          // Share a typed image/* file (not octet-stream), otherwise iOS/Android
+          // treat it as a generic file and only offer "Save to Files".
+          const row = link.closest('td');
+          const previewUrl = row.querySelector('.photo-preview-button').dataset.photoSrc;
+          const fileName = row.querySelector('.photo-name').textContent.trim();
+          const response = await fetch(previewUrl);
+          const raw = await response.blob();
+          const types = {jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp'};
+          const ext = (fileName.split('.').pop() || '').toLowerCase();
+          let type = raw.type.startsWith('image/') ? raw.type : (types[ext] || 'image/png');
+          const base = fileName.replace(/\.[^.]+$/, '') || 'anh-goc';
+          const name = base + '.' + (type === 'image/jpeg' ? 'jpg' : type.split('/')[1]);
+          const file = new File([raw], name, {type});
           if (navigator.canShare({files: [file]})) {
             await navigator.share({files: [file]});
           } else {
