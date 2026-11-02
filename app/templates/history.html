@@ -110,7 +110,7 @@
           const row = link.closest('td');
           const previewUrl = row.querySelector('.photo-preview-button').dataset.photoSrc;
           const fileName = row.querySelector('.photo-name').textContent.trim();
-          const response = await fetch(previewUrl);
+          const response = await fetch(previewUrl + (previewUrl.includes('?') ? '&' : '?') + 'proxy=1');
           const raw = await response.blob();
           const types = {jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp'};
           const ext = (fileName.split('.').pop() || '').toLowerCase();

@@ -324,7 +324,9 @@ def history_image(record_id, kind):
             if not ok:
                 abort(503)
             return send_file(io.BytesIO(encoded.tobytes()), mimetype="image/png", as_attachment=False)
-        if store.client:
+        # proxy=1: the page needs the bytes itself (share sheet), and the bucket
+        # has no CORS, so stream them through the app instead of redirecting.
+        if store.client and request.args.get("proxy") != "1":
             response = redirect(store.signed_url(
                 record_id, names[kind], download_name=record["file_name"] if download else None))
             response.headers["Cache-Control"] = "no-store"
