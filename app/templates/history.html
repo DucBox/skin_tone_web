@@ -96,6 +96,33 @@
       button.disabled = true;
       button.textContent = 'Đang xoá tất cả…';
     });
+    // On phones, a plain download lands in Files / opens a link. The share sheet
+    // offers "Lưu ảnh / Save Image" which puts the photo in the gallery.
+    document.querySelectorAll('.photo-download').forEach(link => {
+      link.addEventListener('click', async event => {
+        if (!navigator.canShare || !navigator.maxTouchPoints) return;
+        event.preventDefault();
+        const label = link.textContent;
+        link.textContent = 'Đang tải…';
+        try {
+          const response = await fetch(link.href);
+          const blob = await response.blob();
+          const disposition = response.headers.get('Content-Disposition') || '';
+          const match = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(disposition);
+          const name = match ? decodeURIComponent(match[1]) : 'anh-goc.jpg';
+          const file = new File([blob], name, {type: blob.type});
+          if (navigator.canShare({files: [file]})) {
+            await navigator.share({files: [file]});
+          } else {
+            window.location.href = link.href;
+          }
+        } catch (error) {
+          if (error.name !== 'AbortError') window.location.href = link.href;
+        } finally {
+          link.textContent = label;
+        }
+      });
+    });
     document.querySelectorAll('.delete-form').forEach(form => {
       form.addEventListener('submit', event => {
         if (!window.confirm('Xoá kết quả và ảnh đi kèm khỏi lịch sử?')) {
